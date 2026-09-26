@@ -1,0 +1,25 @@
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
+import { BookOpen, Loader2 } from 'lucide-react'
+
+export default function AuthCallbackPage() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate('/', { replace: true })
+      else navigate('/auth/login', { replace: true })
+    })
+  }, [navigate])
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-sand-100 dark:bg-dark-bg">
+      <div className="w-12 h-12 rounded-2xl bg-primary-500 flex items-center justify-center">
+        <BookOpen className="w-7 h-7 text-white" />
+      </div>
+      <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
+      <p className="text-gray-500 dark:text-gray-400 text-sm">Completing sign in…</p>
+    </div>
+  )
+}

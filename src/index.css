@@ -1,0 +1,502 @@
+/* Tailwind CSS v4 uses a CSS import rather than the v3 @tailwind directives.
+   Keep the project's custom theme available to every utility class. */
+@import "tailwindcss";
+@config "../tailwind.config.js";
+@source "../src";
+
+@layer base {
+  :root {
+    --bg-charcoal: #0C0C0E;
+    --text-ivory: #F5F2EB;
+    --accent-bronze: #D4A034;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: #0C0C0E;
+    color: #F5F2EB;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-color: #0C0C0E;
+    color: #F5F2EB;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Custom scrollbar for museum editorial feel */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0C0C0E;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #26262D;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #D4A034;
+  }
+
+  /* Focus outline accessibility styles */
+  :focus-visible {
+    outline: 2px solid #D4A034;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+/* ============================================================
+   GLASSMORPHISM & NAV BACKDROP CLASSES
+   ============================================================ */
+.glass {
+  background-color: rgba(250, 248, 245, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.dark .glass {
+  background-color: rgba(12, 12, 14, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(245, 242, 235, 0.08);
+}
+
+.glass-panel {
+  background: rgba(19, 19, 22, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(236, 231, 220, 0.08);
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #E4B856 0%, #D4A034 50%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.notification-dot {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #EF4444;
+  border-radius: 9999px;
+  border: 2px solid #0C0C0E;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(15, 81, 50, 0.35);
+}
+.shadow-accent-glow {
+  box-shadow: 0 0 20px rgba(212, 160, 52, 0.35);
+}
+
+/* ============================================================
+   PORTAL COMPONENT SYSTEM CLASSES (btn, card, badge, heading)
+   ============================================================ */
+.container-app {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .container-app {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .container-app {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+.section {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+/* Typography Headings */
+.heading-hero {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2.5rem, 6vw, 4.75rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.heading-xl {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.heading-lg {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.heading-md {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.heading-sm {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: #0F5132;
+  color: #FFFFFF;
+  border: 1px solid transparent;
+}
+.btn-primary:hover {
+  background-color: #0B3E26;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: inherit;
+  border: 1px solid rgba(245, 242, 235, 0.2);
+}
+.btn-outline:hover {
+  border-color: #D4A034;
+  color: #D4A034;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: inherit;
+}
+.btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+.btn-md {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+}
+.btn-lg {
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+}
+.btn-xl {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  border-radius: 0.75rem;
+}
+
+/* Cards */
+.card {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.75rem;
+}
+.dark .card {
+  background-color: #131316;
+  border-color: rgba(245, 242, 235, 0.08);
+}
+
+.card-hover {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.75rem;
+  transition: all 0.3s ease-out;
+}
+.dark .card-hover {
+  background-color: #131316;
+  border-color: rgba(245, 242, 235, 0.08);
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(15, 81, 50, 0.35);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+}
+.dark .card-hover:hover {
+  border-color: rgba(212, 160, 52, 0.35);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-primary {
+  background-color: rgba(15, 81, 50, 0.2);
+  color: #4ADE80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+.badge-gray {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #DED5C3;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Form inputs */
+.input {
+  width: 100%;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #111827;
+  border-radius: 0.5rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dark .input {
+  background-color: #0C0C0E;
+  border-color: rgba(245, 242, 235, 0.15);
+  color: #F5F2EB;
+}
+.input:focus {
+  border-color: #0F5132;
+  box-shadow: 0 0 0 2px rgba(15, 81, 50, 0.2);
+}
+.dark .input:focus {
+  border-color: #D4A034;
+  box-shadow: 0 0 0 2px rgba(212, 160, 52, 0.2);
+}
+
+.input-lg {
+  width: 100%;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #111827;
+  border-radius: 0.5rem;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  font-size: 1.125rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dark .input-lg {
+  background-color: #0C0C0E;
+  border-color: rgba(245, 242, 235, 0.15);
+  color: #F5F2EB;
+}
+.input-lg:focus {
+  border-color: #0F5132;
+  box-shadow: 0 0 0 2px rgba(15, 81, 50, 0.2);
+}
+.dark .input-lg:focus {
+  border-color: #D4A034;
+  box-shadow: 0 0 0 2px rgba(212, 160, 52, 0.2);
+}
+
+/* Explicit input padding utilities: prevent icon overlapping placeholder text */
+.input.pl-9, input.pl-9 { padding-left: 2.25rem !important; }
+.input.pl-10, input.pl-10 { padding-left: 2.5rem !important; }
+.input.pl-11, input.pl-11, .input-lg.pl-11 { padding-left: 2.75rem !important; }
+.input.pl-12, input.pl-12, .input-lg.pl-12 { padding-left: 3rem !important; }
+.input.pr-10, input.pr-10 { padding-right: 2.5rem !important; }
+.input.pr-11, input.pr-11 { padding-right: 2.75rem !important; }
+.input.pr-12, input.pr-12 { padding-right: 3rem !important; }
+
+.animated-gradient {
+  background: linear-gradient(-45deg, #070708, #0B3E26, #1C1815, #3B0F0F);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============================================================
+   UTILITY CLASSES — custom utilities that extend Tailwind
+   ============================================================ */
+
+/* Subtle noise texture background overlay for archival paper depth */
+.bg-noise {
+  background-image: radial-gradient(rgba(245, 242, 235, 0.03) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Subtle grid line overlay */
+.bg-archival-grid {
+  background-size: 60px 60px;
+  background-image: 
+    linear-gradient(to right, rgba(236, 231, 220, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(236, 231, 220, 0.03) 1px, transparent 1px);
+}
+
+/* Editorial line decorative element */
+.archival-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(212, 160, 52, 0.4) 50%, transparent 100%);
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================================
+   KEYFRAME ANIMATIONS
+   ============================================================ */
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 10s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out both;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.4s ease-out both;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s ease-out both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.35s ease-out both;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease-out both;
+}
+
+/* Museum vignette overlay */
+.bg-museum-vignette {
+  background: radial-gradient(ellipse at center, rgba(19, 19, 22, 0.4) 0%, rgba(7, 7, 8, 0.95) 100%);
+}
+
+/* Parchment glow */
+.bg-parchment-glow {
+  background: radial-gradient(circle at 60% 40%, rgba(212, 160, 52, 0.08) 0%, transparent 60%);
+}
+
+/* Shadow utilities */
+.shadow-museum {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+}
+
+.shadow-artifact {
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(212, 160, 52, 0.08);
+}
+
+.shadow-bronze-glow {
+  box-shadow: 0 0 30px rgba(212, 160, 52, 0.15);
+}
+
+/* bg-charcoal-850 explicit definition (between 800 and 900) */
+.bg-charcoal-850 {
+  background-color: #131316;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
