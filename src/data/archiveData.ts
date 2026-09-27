@@ -40,7 +40,7 @@ export const ARTIFACTS_DATA: ArtifactItem[] = [
     dateRange: 'c. 300 – 350 CE',
     originLocation: 'Northern Stele Park, Aksum, Tigray, Ethiopia',
     repository: 'Aksum World Heritage Site, Ethiopia',
-    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Stela_aksum.jpg/800px-Stela_aksum.jpg',
+    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/0/0b/Aksum%2C_stele_3_detta_di_re_ezana%2C_l%27unica_mai_crollata_04.jpg',
     summary: 'A 24-meter single-block granite obelisk carved with intricate false doors and multi-story window motifs of Aksumite architecture.',
     fullDescription: 'Carved from a single massive block of grey granite weighing over 160 tons, the Stele of Aksum represents the height of ancient Ethiopian stone masonry and structural engineering. The relief carving mimics multi-storied wooden frame structures (the "monkey-head" architectural technique) and was erected using sophisticated ramps, pulleys, and counterweights.',
     keyInsights: [
@@ -118,7 +118,7 @@ export const ARTIFACTS_DATA: ArtifactItem[] = [
     dateRange: 'c. 1200 CE',
     originLocation: 'Lalibela, Amhara Region, Ethiopia',
     repository: 'Lalibela World Heritage Complex',
-    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Bete_Giyorgis_03.jpg/800px-Bete_Giyorgis_03.jpg',
+    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/a/aa/Lalibela%2C_san_giorgio%2C_esterno_24.jpg',
     summary: 'A Greek-cross shaped church carved top-down entirely out of a single volcanic tuff mountain bedrock.',
     fullDescription: 'Biete Ghiorgis is the most iconic of eleven monolithic rock-hewn churches in Lalibela, excavated by cutting downward into solid red volcanic tuff rock to a depth of 12 meters. The interior space, including arches, columns, vaulted ceilings, and ceremonial altars, was hollowed out entirely through manual chisel excavation without synthetic additions or mortared stone.',
     keyInsights: [
@@ -143,7 +143,7 @@ export const ARTIFACTS_DATA: ArtifactItem[] = [
     dateRange: 'c. 1200 – 1350 CE',
     originLocation: 'Ife, Osun State, Nigeria',
     repository: 'Ife Museum of Antiquities, Ile-Ife, Nigeria',
-    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Ife_King_crop.JPG/800px-Ife_King_crop.JPG',
+    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/9/9a/Arte_yoruba%2C_nigeria%2C_testa_da_ife%2C_12-15mo_secolo.JPG',
     summary: 'A serene naturalistic terracotta portrait head featuring fine vertical facial striations (keke) and royal crown ornament.',
     fullDescription: 'Originating from Ile-Ife, regarded in Yoruba cosmology as the cradle of humanity, this terracotta head displays a level of idealised naturalism unmatched in medieval global sculpture. The vertical striations across the face represent royal scarification patterns, while the serene expression embodies "Iwa" (inner character and spiritual composure).',
     keyInsights: [
@@ -168,7 +168,7 @@ export const ARTIFACTS_DATA: ArtifactItem[] = [
     dateRange: 'c. 10 BCE',
     originLocation: 'Begrawiya Northern Cemetery, Meroë, Sudan',
     repository: 'Meroë Archaeological Park, Sudan',
-    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Sudan_Meroe_Pyramids_2001.JPG/800px-Sudan_Meroe_Pyramids_2001.JPG',
+    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/NubianMeroePyramids30sep2005%282%29.jpg',
     summary: 'A steep-angled sandstone pyramid built for Kandake (Queen) Amanishakheto featuring a relief-carved pylon mortuary chapel.',
     fullDescription: 'The Kingdom of Kush constructed over 200 steep-angled sandstone pyramids at Meroë, outnumbering the pyramids of Egypt. Built for the warrior Queen Amanishakheto who defended Kush against Roman legionary incursions, the monument features a sandstone pylon chapel carved with Meroïtic hieroglyphic inscriptions and reliefs depicting the Queen smiting royal adversaries.',
     keyInsights: [
@@ -193,7 +193,7 @@ export const ARTIFACTS_DATA: ArtifactItem[] = [
     dateRange: 'c. 1400 CE',
     originLocation: 'Bandiagara Escarpment, Cliff of Sangha, Mali',
     repository: 'Sanctuary of the Hogon of Arou, Mali',
-    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Falaise_de_Bandiagara.jpg/800px-Falaise_de_Bandiagara.jpg',
+    imageSrc: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Les_Falaises_de_Bandiagara.jpg',
     summary: 'An indigenous cosmogonic tracking system mapping the 50-year elliptical orbit of Sirius B (Po Tolo) and 60-year Sigui rituals.',
     fullDescription: 'Preserved by the Hogons (spiritual elders and astronomers) of the Dogon people along the Bandiagara Escarpment, this astronomical framework accurately calculated the elliptical 50-year orbit of Sirius B—an invisible white dwarf star unobservable to the naked human eye. The knowledge was recorded in rock paintings, ceremonial masks, and woven geometric grids.',
     keyInsights: [
