@@ -282,18 +282,18 @@ function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="heading-hero text-white mb-4 text-balance"
+          className="heading-hero text-white mb-4 !leading-[1.15] sm:!leading-[1.05]"
         >
-          Preserve African{' '}
-          <span className="relative">
-            <AnimatePresence mode="wait">
+          <span className="block sm:inline">Preserve African </span>
+          <span className="inline-block relative overflow-hidden align-top sm:align-bottom h-[1.25em] min-h-[1.25em] text-accent-300">
+            <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={words[wordIdx]}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4 }}
-                className="inline-block text-accent-300"
+                initial={{ opacity: 0, y: '100%' }}
+                animate={{ opacity: 1, y: '0%' }}
+                exit={{ opacity: 0, y: '-100%' }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                className="block"
               >
                 {words[wordIdx]}
               </motion.span>
