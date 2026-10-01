@@ -73,6 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [fetchProfile])
 
+  const getRedirectUrl = (path: string) => {
+    const origin = typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : (import.meta.env.VITE_APP_URL || 'http://localhost:5173')
+    return `${origin}${path}`
+  }
+
   const signUp = async (
     email: string,
     password: string,
@@ -84,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { username, full_name: fullName },
-        emailRedirectTo: `${import.meta.env.VITE_APP_URL}/auth/callback`,
+        emailRedirectTo: getRedirectUrl('/auth/callback'),
       },
     })
     if (error) throw error
@@ -99,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${import.meta.env.VITE_APP_URL}/auth/callback`,
+        redirectTo: getRedirectUrl('/auth/callback'),
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })
@@ -114,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${import.meta.env.VITE_APP_URL}/auth/reset-password`,
+      redirectTo: getRedirectUrl('/auth/reset-password'),
     })
     if (error) throw error
   }

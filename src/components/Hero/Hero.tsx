@@ -54,7 +54,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onDiscoverClick }) =
     <section
       id="hero"
       aria-label="Hero Opening Exhibition"
-      className="relative min-h-screen w-full bg-charcoal-900 text-ivory-100 flex flex-col justify-between pt-28 md:pt-36 pb-12 overflow-hidden bg-archival-grid"
+      className="relative min-h-screen w-full bg-charcoal-900 text-ivory-100 flex flex-col justify-between pt-24 md:pt-28 lg:pt-36 pb-12 overflow-hidden bg-archival-grid"
     >
       {/* Background Atmosphere Layers (1. Background gradually appears) */}
       <div 

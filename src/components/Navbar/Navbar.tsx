@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Menu, X, Globe, User, BookOpen, Compass, Sparkles, Info, Bookmark } from 'lucide-react'
+import { Search, Menu, X, Globe, User, BookOpen, Compass, Sparkles, Info, Bookmark, LogOut } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 
 export interface NavbarProps {
   onSearchClick?: () => void
@@ -14,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   bookmarkCount = 0,
   onBookmarksClick,
 }) => {
+  const { user, profile, signOut } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -57,13 +59,15 @@ export const Navbar: React.FC<NavbarProps> = ({
     { label: 'About', href: '#about', icon: Info },
   ]
 
+  const displayName = profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Member'
+
   return (
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled
             ? 'bg-charcoal-900/90 backdrop-blur-md border-b border-ivory-100/10 py-3.5 shadow-museum'
-            : 'bg-gradient-to-b from-charcoal-950/80 to-transparent py-6'
+            : 'bg-gradient-to-b from-charcoal-950/80 to-transparent py-4 lg:py-6'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between">
@@ -77,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-display font-bold text-bronze-400 text-sm">A</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-bold text-lg md:text-xl tracking-widest text-ivory-100 group-hover:text-bronze-300 transition-colors duration-300">
+              <span className="font-display font-bold text-base sm:text-lg lg:text-xl tracking-widest text-ivory-100 group-hover:text-bronze-300 transition-colors duration-300">
                 AFROARCHIVE
               </span>
               <span className="font-mono text-[9px] tracking-exotic text-bronze-400/80 -mt-1 hidden sm:inline">
@@ -86,10 +90,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </a>
 
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links — only show on lg+ (1024px+) to avoid cramped tablet layout */}
           <nav
             aria-label="Main Navigation"
-            className="hidden md:flex items-center space-x-8"
+            className="hidden lg:flex items-center space-x-8"
           >
             {navLinks.map((link) => (
               <a
@@ -102,8 +106,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </nav>
 
-          {/* Desktop Action Items */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Desktop Action Items — only show on lg+ */}
+          <div className="hidden lg:flex items-center space-x-4">
             <button
               onClick={onSearchClick}
               type="button"
@@ -127,14 +131,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            <button
-              onClick={onSignInClick}
-              type="button"
-              className="inline-flex items-center space-x-2 text-xs font-sans font-semibold uppercase tracking-wider text-ivory-100 bg-charcoal-800/80 border border-ivory-100/15 hover:border-bronze-400/60 hover:bg-charcoal-700 px-4 py-2 rounded-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
-            >
-              <User className="w-3.5 h-3.5 text-bronze-400" />
-              <span>Sign In</span>
-            </button>
+            {user ? (
+              <div className="flex items-center space-x-2">
+                <span className="font-mono text-2xs text-bronze-300 bg-charcoal-800 border border-bronze-400/30 px-3 py-1.5 rounded-sm max-w-[140px] truncate" title={user.email || ''}>
+                  {displayName}
+                </span>
+                <button
+                  onClick={() => signOut()}
+                  type="button"
+                  title="Sign Out"
+                  className="p-2 text-ivory-400 hover:text-red-400 hover:bg-charcoal-800/60 rounded transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onSignInClick}
+                type="button"
+                className="inline-flex items-center space-x-2 text-xs font-sans font-semibold uppercase tracking-wider text-ivory-100 bg-charcoal-800/80 border border-ivory-100/15 hover:border-bronze-400/60 hover:bg-charcoal-700 px-4 py-2 rounded-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+              >
+                <User className="w-3.5 h-3.5 text-bronze-400" />
+                <span>Sign In</span>
+              </button>
+            )}
 
             <a
               href="/"
@@ -145,8 +165,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </a>
           </div>
 
-          {/* Mobile Hamburger Controls */}
-          <div className="flex md:hidden items-center space-x-2">
+          {/* Mobile + Tablet Hamburger Controls — show below lg (< 1024px) */}
+          <div className="flex lg:hidden items-center space-x-2">
             <button
               onClick={onSearchClick}
               type="button"
@@ -155,6 +175,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Search className="w-5 h-5" />
             </button>
+
+            <button
+              onClick={onBookmarksClick}
+              type="button"
+              aria-label="Bookmarks"
+              className="relative p-2 text-ivory-300 hover:text-bronze-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+            >
+              <Bookmark className="w-5 h-5" />
+              {bookmarkCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-bronze-400 text-charcoal-950 font-mono text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {bookmarkCount}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               type="button"
@@ -169,14 +204,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </header>
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile + Tablet Drawer Overlay — show below lg (< 1024px) */}
       {mobileMenuOpen && (
         <div
           id="mobile-navigation-drawer"
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation Menu"
-          className="fixed inset-0 z-40 bg-charcoal-950/98 backdrop-blur-xl flex flex-col justify-between p-6 sm:p-10 md:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-charcoal-950/98 backdrop-blur-xl flex flex-col justify-between p-6 sm:p-10 lg:hidden animate-fade-in"
         >
           {/* Mobile Header Spacer */}
           <div className="pt-20 flex justify-between items-center border-b border-ivory-100/10 pb-4">
@@ -188,8 +223,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          {/* Navigation Links List */}
-          <div className="flex flex-col space-y-6 my-auto">
+          {/* Navigation Links List — tablet gets a 2-column grid */}
+          <div className="flex flex-col sm:grid sm:grid-cols-2 sm:gap-x-8 space-y-6 sm:space-y-0 sm:gap-y-6 my-auto">
             {navLinks.map((link, idx) => {
               const IconComp = link.icon
               return (
@@ -197,7 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between text-2xl font-serif text-ivory-100 hover:text-bronze-300 transition-colors py-2 border-b border-ivory-100/5 group"
+                  className="flex items-center justify-between text-2xl sm:text-xl font-serif text-ivory-100 hover:text-bronze-300 transition-colors py-2 border-b border-ivory-100/5 group"
                 >
                   <div className="flex items-center space-x-4">
                     <span className="font-mono text-xs text-bronze-400/80">0{idx + 1}</span>
@@ -211,27 +246,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </div>
 
-          {/* Mobile Footer Actions */}
-          <div className="pt-6 border-t border-ivory-100/10 flex flex-col space-y-3">
+          {/* Mobile Footer Actions — tablet gets side-by-side buttons */}
+          <div className="pt-6 border-t border-ivory-100/10 flex flex-col sm:flex-row sm:items-center gap-3">
             <a
               href="/"
-              className="w-full text-center py-3 bg-charcoal-800 text-ivory-200 border border-ivory-100/15 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:border-bronze-400 transition-colors"
+              className="flex-1 text-center py-3 bg-charcoal-800 text-ivory-200 border border-ivory-100/15 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:border-bronze-400 transition-colors"
             >
               ← Back to Main Archive Portal
             </a>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false)
-                if (onSignInClick) onSignInClick()
-              }}
-              type="button"
-              className="w-full text-center py-3 bg-bronze-400 text-charcoal-950 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-bronze-300 transition-colors"
-            >
-              Sign In to Archive
-            </button>
-            <div className="text-center font-mono text-[10px] text-ivory-500 tracking-wider">
-              PRESERVE. DISCOVER. EMPOWER.
-            </div>
+            {user ? (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  signOut()
+                }}
+                type="button"
+                className="flex-1 text-center py-3 bg-red-950/50 text-red-300 border border-red-500/40 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-red-900/60 transition-colors"
+              >
+                Sign Out ({displayName})
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  if (onSignInClick) onSignInClick()
+                }}
+                type="button"
+                className="flex-1 text-center py-3 bg-bronze-400 text-charcoal-950 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-bronze-300 transition-colors"
+              >
+                Sign In to Archive
+              </button>
+            )}
+          </div>
+          <div className="text-center font-mono text-[10px] text-ivory-500 tracking-wider pt-3">
+            PRESERVE. DISCOVER. EMPOWER.
           </div>
         </div>
       )}
