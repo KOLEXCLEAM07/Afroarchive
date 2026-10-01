@@ -61,7 +61,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
     try {
       await signInWithGoogle()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('not enabled') || msg.includes('validation_failed')) {
+        setError('Google sign-in is not enabled in your Supabase Dashboard yet. Please enable Google under Authentication -> Providers, or sign in below with email and password.')
+      } else {
+        setError(msg || 'Google sign-in failed. Please try again or use email sign in.')
+      }
     } finally {
       setGLoading(false)
     }

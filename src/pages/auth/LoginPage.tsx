@@ -31,9 +31,19 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     setGLoading(true)
-    try { await signInWithGoogle() }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Google sign-in failed') }
-    finally { setGLoading(false) }
+    setError(null)
+    try {
+      await signInWithGoogle()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('not enabled') || msg.includes('validation_failed')) {
+        setError('Google sign-in is not enabled in your Supabase Dashboard yet. Please enable Google under Authentication -> Providers, or sign in below with your email and password.')
+      } else {
+        setError(msg || 'Google sign-in failed. Please try again.')
+      }
+    } finally {
+      setGLoading(false)
+    }
   }
 
   return (
