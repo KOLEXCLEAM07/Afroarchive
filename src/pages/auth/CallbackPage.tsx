@@ -7,10 +7,30 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate('/', { replace: true })
-      else navigate('/auth/login', { replace: true })
+    // Listen for auth state change from hash or code exchange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || (session && session.user)) {
+        navigate('/', { replace: true })
+      }
     })
+
+    // Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/', { replace: true })
+      } else {
+        // If not immediately available (exchanging tokens), allow a grace period
+        const timer = setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session: s } }) => {
+            if (s) navigate('/', { replace: true })
+            else navigate('/auth/login', { replace: true })
+          })
+        }, 2500)
+        return () => clearTimeout(timer)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [navigate])
 
   return (
