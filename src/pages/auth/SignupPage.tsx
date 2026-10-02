@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, Mail, Lock, Eye, EyeOff, User, AtSign, AlertCircle, Globe, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
   const { signUp, signInWithGoogle } = useAuth()
@@ -36,9 +37,19 @@ export default function SignupPage() {
     setLoading(true)
     try {
       await signUp(email, password, username, fullName)
-      setSuccess(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        navigate('/')
+      } else {
+        setSuccess(true)
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+      const msg = err instanceof Error ? err.message : 'Registration failed. Please try again.'
+      if (msg.toLowerCase().includes('confirmation email') || msg.toLowerCase().includes('rate limit')) {
+        setError('Supabase email limit reached. In your Supabase Dashboard, go to Authentication -> Providers -> Email and turn off "Confirm email" for instant sign-ups.')
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
