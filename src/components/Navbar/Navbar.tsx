@@ -133,9 +133,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {user ? (
               <div className="flex items-center space-x-2">
-                <span className="font-mono text-2xs text-bronze-300 bg-charcoal-800 border border-bronze-400/30 px-3 py-1.5 rounded-sm max-w-[140px] truncate" title={user.email || ''}>
-                  {displayName}
-                </span>
+                <a
+                  href="/profile"
+                  className="font-mono text-2xs text-bronze-300 hover:text-bronze-200 bg-charcoal-800 hover:bg-charcoal-750 border border-bronze-400/30 hover:border-bronze-400 px-3 py-1.5 rounded-sm max-w-[140px] truncate flex items-center space-x-1.5 transition-colors"
+                  title="View Archival Profile & Write Articles"
+                >
+                  <User className="w-3 h-3 text-bronze-400 flex-shrink-0" />
+                  <span className="truncate">{displayName}</span>
+                </a>
                 <button
                   onClick={() => signOut()}
                   type="button"
@@ -255,16 +260,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               ← Back to Main Archive Portal
             </a>
             {user ? (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  signOut()
-                }}
-                type="button"
-                className="flex-1 text-center py-3 bg-red-950/50 text-red-300 border border-red-500/40 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-red-900/60 transition-colors"
-              >
-                Sign Out ({displayName})
-              </button>
+              <>
+                <a
+                  href="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1 text-center py-3 bg-bronze-400 text-charcoal-950 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-bronze-300 transition-colors"
+                >
+                  My Profile ({displayName})
+                </a>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    signOut()
+                  }}
+                  type="button"
+                  className="flex-1 text-center py-3 bg-red-950/50 text-red-300 border border-red-500/40 font-sans font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-red-900/60 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => {

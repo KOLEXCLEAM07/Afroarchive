@@ -10,6 +10,8 @@ import SignupPage from './pages/auth/SignupPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import CallbackPage from './pages/auth/CallbackPage'
 
+import ProfilePage from './pages/ProfilePage'
+
 export function App() {
   return (
     <BrowserRouter>
@@ -35,6 +37,9 @@ export function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
+          <Route path="/write" element={<ProfilePage />} />
           <Route path="/exhibition" element={<Navigate to="/museum" replace />} />
         </Route>
 
