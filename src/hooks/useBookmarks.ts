@@ -4,7 +4,7 @@ const BOOKMARKS_KEY = 'afroarchive_saved_bookmarks_v1'
 
 export interface BookmarkEntry {
   id: string
-  type: 'artifact' | 'story'
+  type: 'artifact' | 'story' | 'article'
   title: string
   subtitle?: string
   catalogOrCategory: string

@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import CallbackPage from './pages/auth/CallbackPage'
 
 import ProfilePage from './pages/ProfilePage'
+import ArticleDetailPage from './pages/ArticleDetailPage'
 
 export function App() {
   return (
@@ -37,9 +38,12 @@ export function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
+          <Route path="/collections/:slug" element={<DiscoverPage />} />
+          <Route path="/article/:slug" element={<ArticleDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/write" element={<ProfilePage />} />
+          <Route path="/settings" element={<Navigate to="/profile?tab=settings" replace />} />
           <Route path="/exhibition" element={<Navigate to="/museum" replace />} />
         </Route>
 

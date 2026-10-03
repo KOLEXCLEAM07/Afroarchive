@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { to: '/',            label: 'Home'        },
   { to: '/discover',    label: 'Explore'     },
   { to: '/collections', label: 'Collections' },
-  { to: '/about',       label: 'About'       },
+  { to: '/museum',      label: 'Museum'      },
 ]
 
 export default function Navbar() {
@@ -256,7 +256,7 @@ export default function Navbar() {
                             @{profile?.username || user.email}
                           </p>
                         </div>
-                        <ProfileMenuItem to={`/profile/${profile?.username}`} icon={<User className="w-4 h-4" />} label="My Profile" onClick={() => setProfileOpen(false)} />
+                        <ProfileMenuItem to={profile?.username ? `/profile/${profile.username}` : '/profile'} icon={<User className="w-4 h-4" />} label="My Profile" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/write"    icon={<Feather className="w-4 h-4" />} label="Write Article" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings"      onClick={() => setProfileOpen(false)} />
                         {isAdmin && (
@@ -365,6 +365,13 @@ export default function Navbar() {
                 </div>
               ) : (
                 <div className="pt-3 border-t border-sand-200 dark:border-dark-border space-y-1.5">
+                  <Link
+                    to={profile?.username ? `/profile/${profile.username}` : '/profile'}
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-card flex items-center gap-2"
+                  >
+                    <User className="w-4 h-4" /> My Profile
+                  </Link>
                   <Link
                     to="/write"
                     onClick={() => setMenuOpen(false)}
