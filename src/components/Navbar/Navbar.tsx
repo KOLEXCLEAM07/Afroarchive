@@ -70,21 +70,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             : 'bg-gradient-to-b from-charcoal-950/80 to-transparent py-4 lg:py-6'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between">
+        <div className="container-app flex items-center justify-between">
           {/* Brand Wordmark */}
           <a
             href="/"
-            className="group flex items-center space-x-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400 p-1 rounded"
+            className="group flex items-center space-x-2 focus:outline-none p-1 rounded"
             title="Return to Main Portal"
           >
-            <div className="w-8 h-8 rounded-sm bg-bronze-400/10 border border-bronze-400/40 flex items-center justify-center transition-colors duration-300 group-hover:border-bronze-400">
-              <span className="font-display font-bold text-bronze-400 text-sm">A</span>
+            <div className="w-8 h-8 rounded-lg bg-primary-500/20 border border-primary-500/40 flex items-center justify-center transition-colors duration-300 group-hover:border-primary-400">
+              <span className="font-serif font-bold text-accent-400 text-sm">A</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-display font-bold text-base sm:text-lg lg:text-xl tracking-widest text-ivory-100 group-hover:text-bronze-300 transition-colors duration-300">
+              <span className="font-serif font-bold text-base sm:text-lg lg:text-xl tracking-wider text-white group-hover:text-accent-300 transition-colors duration-300">
                 AFROARCHIVE
               </span>
-              <span className="font-mono text-[9px] tracking-exotic text-bronze-400/80 -mt-1 hidden sm:inline">
+              <span className="font-mono text-[9px] tracking-widest text-accent-400/80 -mt-1 hidden sm:inline">
                 DIGITAL MUSEUM
               </span>
             </div>
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <a
                 key={link.label}
                 href={link.href}
-                className="font-sans text-xs uppercase tracking-widest text-ivory-300 hover:text-bronze-300 transition-colors duration-300 relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-bronze-400 hover:after:w-full after:transition-all after:duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-bronze-400"
+                className="font-sans text-xs uppercase tracking-widest text-white/80 hover:text-accent-300 transition-colors duration-300 relative py-1 focus:outline-none"
               >
                 {link.label}
               </a>
@@ -107,12 +107,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Desktop Action Items — only show on lg+ */}
-          <div className="hidden lg:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-3">
             <button
               onClick={onSearchClick}
               type="button"
               aria-label="Search AfroArchive collections"
-              className="p-2 text-ivory-300 hover:text-bronze-300 hover:bg-charcoal-800/60 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-200"
             >
               <Search className="w-4 h-4" />
             </button>
@@ -121,11 +121,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onBookmarksClick}
               type="button"
               aria-label="View Saved Heritage Items"
-              className="relative p-2 text-ivory-300 hover:text-bronze-300 hover:bg-charcoal-800/60 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+              className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors duration-200"
             >
               <Bookmark className="w-4 h-4" />
               {bookmarkCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-bronze-400 text-charcoal-950 font-mono text-[9px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary-500 text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center">
                   {bookmarkCount}
                 </span>
               )}
@@ -135,17 +135,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center space-x-2">
                 <a
                   href="/profile"
-                  className="font-mono text-2xs text-bronze-300 hover:text-bronze-200 bg-charcoal-800 hover:bg-charcoal-750 border border-bronze-400/30 hover:border-bronze-400 px-3 py-1.5 rounded-sm max-w-[140px] truncate flex items-center space-x-1.5 transition-colors"
+                  className="btn btn-sm btn-outline gap-1.5 max-w-[140px] truncate"
                   title="View Archival Profile & Write Articles"
                 >
-                  <User className="w-3 h-3 text-bronze-400 flex-shrink-0" />
+                  <User className="w-3.5 h-3.5 text-accent-400 flex-shrink-0" />
                   <span className="truncate">{displayName}</span>
                 </a>
                 <button
                   onClick={() => signOut()}
                   type="button"
                   title="Sign Out"
-                  className="p-2 text-ivory-400 hover:text-red-400 hover:bg-charcoal-800/60 rounded transition-colors"
+                  className="p-2 text-white/60 hover:text-red-400 hover:bg-white/10 rounded transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -154,9 +154,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onSignInClick}
                 type="button"
-                className="inline-flex items-center space-x-2 text-xs font-sans font-semibold uppercase tracking-wider text-ivory-100 bg-charcoal-800/80 border border-ivory-100/15 hover:border-bronze-400/60 hover:bg-charcoal-700 px-4 py-2 rounded-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+                className="btn btn-sm btn-primary gap-1.5"
               >
-                <User className="w-3.5 h-3.5 text-bronze-400" />
+                <User className="w-3.5 h-3.5" />
                 <span>Sign In</span>
               </button>
             )}

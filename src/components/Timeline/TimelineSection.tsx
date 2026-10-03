@@ -23,45 +23,37 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
     <section
       id="timeline"
       aria-label="Chronological Civilizations Timeline"
-      className="relative w-full bg-charcoal-950 text-ivory-100 py-24 border-t border-ivory-100/10 overflow-hidden"
+      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors overflow-hidden"
     >
-      {/* Background Vignette Atmosphere */}
-      <div 
-        className="absolute inset-0 bg-museum-vignette pointer-events-none" 
-        aria-hidden="true" 
-      />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-12">
+      <div className="container-app space-y-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-ivory-100/10 pb-8">
-          <div className="space-y-4 max-w-2xl">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+          <div className="space-y-3 max-w-2xl">
             <div className="flex items-center space-x-3">
-              <Badge variant="bronze" size="sm">
-                EXHIBITION GALLERY 03
-              </Badge>
-              <span className="font-mono text-2xs uppercase tracking-widest text-ivory-400">
-                CHRONOLOGICAL EXHIBITION
+              <span className="badge badge-primary">CHRONOLOGICAL EXHIBITION</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                2500 BCE — 1900 CE
               </span>
             </div>
 
-            <h2 className="font-display font-semibold text-3xl md:text-5xl text-ivory-100 tracking-tight">
-              CIVILIZATIONS TIMELINE
+            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
+              Civilizations Timeline
             </h2>
 
-            <p className="font-sans text-sm md:text-base text-ivory-300 font-light leading-relaxed">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
               Trace the major historical epochs, empires, and scientific milestones across African antiquity and medieval civilizations.
             </p>
           </div>
 
-          <div className="font-mono text-2xs text-bronze-400 uppercase tracking-widest">
-            2500 BCE — 1900 CE ARCHIVAL SEQUENCE
+          <div className="badge badge-primary">
+            ARCHIVAL SEQUENCE
           </div>
         </div>
 
         {/* Interactive Horizontal Scrubber / Era Selector */}
-        <div className="relative border-y border-ivory-100/10 py-6 overflow-x-auto no-scrollbar">
-          <div className="flex items-center space-x-4 md:space-x-8 min-w-max">
+        <div className="relative border-y border-sand-200 dark:border-dark-border py-6 overflow-x-auto no-scrollbar">
+          <div className="flex items-center space-x-4 md:space-x-6 min-w-max">
             {TIMELINE_ERAS.map((era, idx) => {
               const isActive = era.id === activeEraId
               return (
@@ -70,18 +62,18 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
                   onClick={() => setActiveEraId(era.id)}
                   type="button"
                   aria-pressed={isActive}
-                  className={`group relative flex flex-col items-start p-4 rounded-lg transition-all duration-300 ${
+                  className={`group relative flex flex-col items-start p-4 rounded-xl transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-charcoal-800 border border-bronze-400/50 shadow-bronze-glow'
-                      : 'bg-charcoal-900/60 border border-ivory-100/5 hover:border-ivory-100/20 hover:bg-charcoal-850'
+                      ? 'card bg-primary-50 dark:bg-primary-950/40 border-2 border-primary-500 dark:border-accent-400 shadow-md'
+                      : 'card bg-white dark:bg-dark-card border border-sand-200 dark:border-dark-border hover:border-primary-400/40'
                   }`}
                 >
-                  <span className="font-mono text-2xs text-bronze-400 tracking-widest uppercase mb-1">
-                    ERA 0{idx + 1} · {era.period}
+                  <span className="text-xs font-mono text-primary-600 dark:text-accent-400 uppercase tracking-wider mb-1">
+                    Era 0{idx + 1} · {era.period}
                   </span>
                   <span
-                    className={`font-display font-semibold text-base md:text-lg transition-colors ${
-                      isActive ? 'text-ivory-100' : 'text-ivory-400 group-hover:text-ivory-200'
+                    className={`font-serif font-bold text-base md:text-lg transition-colors ${
+                      isActive ? 'text-primary-700 dark:text-white' : 'text-gray-700 dark:text-gray-300 group-hover:text-primary-600'
                     }`}
                   >
                     {era.title}
@@ -96,35 +88,35 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Era Overview Details */}
-          <div className="lg:col-span-7 bg-charcoal-850 p-6 md:p-10 rounded-lg border border-ivory-100/10 flex flex-col justify-between space-y-6 shadow-museum">
+          <div className="lg:col-span-7 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <Badge variant="bronze" size="sm">
+                <span className="badge badge-primary">
                   {currentEra.period}
-                </Badge>
-                <span className="font-mono text-2xs uppercase text-ivory-400 tracking-wider">
+                </span>
+                <span className="text-xs font-mono uppercase text-gray-500 dark:text-gray-400 tracking-wider">
                   {currentEra.region}
                 </span>
               </div>
 
-              <h3 className="font-display font-semibold text-2xl md:text-3xl text-ivory-100">
+              <h3 className="heading-lg text-gray-900 dark:text-white">
                 {currentEra.title}
               </h3>
 
-              <p className="font-sans text-sm md:text-base text-ivory-300 font-light leading-relaxed">
+              <p className="font-sans text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
                 {currentEra.summary}
               </p>
             </div>
 
             {/* Achievements Checklist */}
-            <div className="space-y-3 pt-4 border-t border-ivory-100/10">
-              <span className="font-mono text-2xs uppercase tracking-widest text-bronze-400">
-                KEY HISTORICAL ACHIEVEMENTS
+            <div className="space-y-3 pt-4 border-t border-sand-200 dark:border-dark-border">
+              <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider">
+                Key Historical Achievements
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {currentEra.achievements.map((item, idx) => (
-                  <div key={idx} className="flex items-start space-x-2.5 text-xs text-ivory-200">
-                    <CheckCircle2 className="w-4 h-4 text-bronze-400 flex-shrink-0 mt-0.5" />
+                  <div key={idx} className="flex items-start space-x-2 text-xs text-gray-700 dark:text-gray-300">
+                    <CheckCircle2 className="w-4 h-4 text-primary-500 flex-shrink-0 mt-0.5" />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -133,40 +125,38 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
           </div>
 
           {/* Featured Era Artifact Spotlight */}
-          <div className="lg:col-span-5 bg-charcoal-850 p-6 md:p-8 rounded-lg border border-ivory-100/10 flex flex-col justify-between space-y-6 shadow-artifact">
+          <div className="lg:col-span-5 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6">
             <div className="space-y-3">
-              <span className="font-mono text-2xs uppercase tracking-widest text-bronze-400">
-                ERA FEATURED ARTIFACT
+              <span className="badge badge-primary">
+                Featured Heritage
               </span>
 
-              <h4 className="font-display font-semibold text-xl text-ivory-100">
+              <h4 className="font-serif font-bold text-xl text-gray-900 dark:text-white">
                 {featuredArtifact.title}
               </h4>
 
-              <p className="font-sans text-xs text-ivory-300 font-light line-clamp-3">
+              <p className="font-sans text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
                 {featuredArtifact.summary}
               </p>
             </div>
 
-            <div className="p-4 rounded bg-charcoal-900 border border-ivory-100/10 space-y-2">
-              <div className="flex justify-between font-mono text-[10px] uppercase text-ivory-400">
+            <div className="p-4 rounded-lg bg-white dark:bg-dark-surface border border-sand-200 dark:border-dark-border space-y-2">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>CATALOG</span>
-                <span className="text-bronze-400">{featuredArtifact.catalogNumber}</span>
+                <span className="text-primary-600 dark:text-accent-400 font-semibold">{featuredArtifact.catalogNumber}</span>
               </div>
-              <div className="flex justify-between font-mono text-[10px] uppercase text-ivory-400">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>LOCATION</span>
-                <span className="text-ivory-200">{featuredArtifact.originLocation}</span>
+                <span className="text-gray-800 dark:text-gray-200">{featuredArtifact.originLocation}</span>
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="md"
+            <button
               onClick={() => onInspectArtifact(featuredArtifact)}
-              className="w-full"
+              className="btn btn-primary btn-md w-full"
             >
-              INSPECT ERA ARTIFACT
-            </Button>
+              Inspect Era Artifact
+            </button>
           </div>
         </div>
       </div>

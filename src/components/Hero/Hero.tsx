@@ -75,7 +75,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onDiscoverClick }) =
         1380
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full my-auto">
+      <div className="relative z-10 container-app w-full my-auto">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -87,10 +87,10 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onDiscoverClick }) =
             
             {/* Tagline & Metadata Labels (3. Wordmark / Tagline settled) */}
             <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3">
-              <Badge variant="bronze" size="sm">
+              <span className="badge badge-primary">
                 A LIVING DIGITAL ARCHIVE
-              </Badge>
-              <span className="font-mono text-2xs text-ivory-400 tracking-wide hidden sm:inline">
+              </span>
+              <span className="font-mono text-xs text-ivory-400 tracking-wide hidden sm:inline">
                 Stories, objects, and ideas from across Africa
               </span>
             </motion.div>

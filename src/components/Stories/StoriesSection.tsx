@@ -34,27 +34,25 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({
     <section
       id="stories"
       aria-label="Stories, Philosophies & Oral Traditions"
-      className="relative w-full bg-charcoal-900 text-ivory-100 py-24 border-t border-ivory-100/10"
+      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-16">
+      <div className="container-app space-y-12">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-ivory-100/10 pb-8">
-          <div className="space-y-4 max-w-2xl">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+          <div className="space-y-3 max-w-2xl">
             <div className="flex items-center space-x-3">
-              <Badge variant="bronze" size="sm">
-                EXHIBITION GALLERY 04
-              </Badge>
-              <span className="font-mono text-2xs uppercase tracking-widest text-ivory-400">
-                INTELLECTUAL HERITAGE
+              <span className="badge badge-primary">INTELLECTUAL HERITAGE</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Centuries of rational thought & oral traditions
               </span>
             </div>
 
-            <h2 className="font-display font-semibold text-3xl md:text-5xl text-ivory-100 tracking-tight">
-              STORIES & PHILOSOPHIES
+            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
+              Stories & Philosophies
             </h2>
 
-            <p className="font-sans text-sm md:text-base text-ivory-300 font-light leading-relaxed">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
               Immerse yourself in centuries of African philosophical thought, rationalist treatises, indigenous democratic frameworks, and Griot oral epics.
             </p>
           </div>
@@ -66,10 +64,10 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({
                 key={cat.key}
                 onClick={() => setActiveCategory(cat.key)}
                 type="button"
-                className={`font-mono text-2xs uppercase tracking-wider px-3.5 py-2 rounded transition-all duration-300 ${
+                className={`badge transition-all cursor-pointer ${
                   activeCategory === cat.key
-                    ? 'bg-bronze-400 text-charcoal-950 font-bold'
-                    : 'bg-charcoal-850 text-ivory-300 border border-ivory-100/10 hover:border-bronze-400/40'
+                    ? 'badge-primary font-bold'
+                    : 'badge-gray hover:border-primary-400/40'
                 }`}
               >
                 {cat.label}
@@ -92,31 +90,31 @@ export const StoriesSection: React.FC<StoriesSectionProps> = ({
         </div>
 
         {/* African Indigenous Proverbs & Wisdom Spotlight */}
-        <div className="bg-charcoal-850 rounded-lg border border-ivory-100/10 p-8 md:p-12 space-y-8 shadow-museum">
-          <div className="flex items-center space-x-3 border-b border-ivory-100/10 pb-4">
-            <MessageSquareQuote className="w-5 h-5 text-bronze-400" />
-            <span className="font-mono text-xs uppercase tracking-widest text-bronze-400">
-              INDIGENOUS PROVERBS & PHILOSOPHICAL MAXIMS
+        <div className="card p-8 md:p-12 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border space-y-8">
+          <div className="flex items-center space-x-3 border-b border-sand-200 dark:border-dark-border pb-4">
+            <MessageSquareQuote className="w-5 h-5 text-primary-600 dark:text-accent-400" />
+            <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider">
+              Indigenous Proverbs & Philosophical Maxims
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {PROVERBS_DATA.map((item) => (
-              <div key={item.id} className="space-y-3 p-5 rounded bg-charcoal-900 border border-ivory-100/5 hover:border-bronze-400/30 transition-colors">
-                <span className="font-mono text-2xs uppercase text-bronze-400 tracking-wider">
+              <div key={item.id} className="space-y-3 p-5 rounded-xl bg-white dark:bg-dark-surface border border-sand-200 dark:border-dark-border hover:border-primary-400/30 transition-colors">
+                <span className="badge badge-primary text-[10px]">
                   {item.originCulture} · {item.region}
                 </span>
                 
-                <h4 className="font-serif text-lg md:text-xl italic text-ivory-100 font-medium">
+                <h4 className="font-serif text-lg md:text-xl italic text-gray-900 dark:text-white font-medium">
                   "{item.proverb}"
                 </h4>
 
-                <p className="font-sans text-xs text-bronze-300 font-medium italic">
+                <p className="font-sans text-xs text-primary-600 dark:text-accent-400 font-medium italic">
                   Translation: {item.translation}
                 </p>
 
-                <p className="font-sans text-xs text-ivory-300 font-light leading-relaxed pt-2 border-t border-ivory-100/5">
-                  <strong className="text-ivory-100 font-mono text-[10px] uppercase tracking-wider block mb-1">
+                <p className="font-sans text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-2 border-t border-sand-200 dark:border-dark-border">
+                  <strong className="text-gray-900 dark:text-white font-mono text-[10px] uppercase tracking-wider block mb-1">
                     Philosophical Insight:
                   </strong>
                   {item.philosophicalMeaning}

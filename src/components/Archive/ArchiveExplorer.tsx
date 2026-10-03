@@ -136,40 +136,40 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
     <section
       id="archive"
       aria-label="Archive Explorer and Collections"
-      className="relative w-full bg-charcoal-900 text-ivory-100 py-24 border-t border-ivory-100/10"
+      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-12">
+      <div className="container-app space-y-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-ivory-100/10 pb-8">
-          <div className="space-y-4 max-w-2xl">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+          <div className="space-y-3 max-w-2xl">
             <div className="flex items-center space-x-3">
-              <Badge variant="bronze" size="sm">THE COLLECTION</Badge>
-              <span className="font-mono text-2xs tracking-wide text-ivory-400">
+              <span className="badge badge-primary">THE COLLECTION</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 A starting point for further reading
               </span>
             </div>
 
-            <h2 className="font-display font-semibold text-3xl md:text-5xl text-ivory-100 tracking-tight">
-              Browse the collection
+            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
+              Browse the Collection
             </h2>
 
-            <p className="font-sans text-sm md:text-base text-ivory-300 font-light leading-relaxed">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
               Each entry is a short invitation: a manuscript, monument, work of art, or idea with context for your next step.
             </p>
           </div>
 
-          <div className="flex flex-col items-start md:items-end space-y-2 font-mono text-2xs text-ivory-400">
+          <div className="flex flex-col items-start md:items-end space-y-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono">
             <div className="flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-bronze-400" />
+              <Layers className="w-4 h-4 text-primary-500" />
               <span>{filteredArtifacts.length} of {ARTIFACTS_DATA.length} featured entries</span>
             </div>
-            <span className="text-bronze-400">Updated collection</span>
+            <span className="badge badge-primary">CURATED ARCHIVE</span>
           </div>
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="space-y-6 bg-charcoal-850 p-6 rounded-lg border border-ivory-100/10">
+        <div className="card p-6 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border space-y-6">
           
           {/* Top Search & Filter Bar */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
@@ -181,25 +181,25 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter by keyword, location, or catalog number..."
-                className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs px-4 py-3 pl-10 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none placeholder:text-ivory-500"
+                className="input pl-10 text-sm"
               />
-              <Search className="w-4 h-4 text-ivory-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Region Filter Pills */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-2xs uppercase text-ivory-400 tracking-wider mr-2 hidden sm:inline">
-                REGION:
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">
+                Region:
               </span>
               {regions.map((reg) => (
                 <button
                   key={reg.key}
                   onClick={() => setSelectedRegion(reg.key)}
                   type="button"
-                  className={`font-mono text-2xs px-3 py-1.5 rounded uppercase tracking-wider transition-all duration-300 ${
+                  className={`badge transition-all cursor-pointer ${
                     selectedRegion === reg.key
-                      ? 'bg-bronze-400 text-charcoal-950 font-bold'
-                      : 'bg-charcoal-900 text-ivory-300 border border-ivory-100/10 hover:border-bronze-400/40 hover:text-ivory-100'
+                      ? 'badge-primary font-bold'
+                      : 'badge-gray hover:border-primary-400/40'
                   }`}
                 >
                   {reg.label}
@@ -209,16 +209,16 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
           </div>
 
           {/* Category Tabs */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-2 border-t border-ivory-100/5 no-scrollbar">
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-2 border-t border-sand-200 dark:border-dark-border no-scrollbar">
             {categories.map((cat) => (
               <button
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key)}
                 type="button"
-                className={`font-sans text-xs font-medium uppercase tracking-widest px-4 py-2 rounded-sm whitespace-nowrap transition-all duration-300 ${
+                className={`font-sans text-xs font-medium uppercase tracking-wider px-3.5 py-1.5 rounded-lg whitespace-nowrap transition-all ${
                   selectedCategory === cat.key
-                    ? 'text-bronze-300 border-b-2 border-bronze-400 bg-charcoal-900/60'
-                    : 'text-ivory-400 hover:text-ivory-200'
+                    ? 'bg-primary-500 text-white font-semibold shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-card'
                 }`}
               >
                 {cat.label}
@@ -241,10 +241,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-charcoal-850 rounded-lg border border-ivory-100/10 space-y-4">
-            <Compass className="w-10 h-10 text-bronze-400 mx-auto" />
-            <h3 className="font-display text-xl text-ivory-100">No Matching Archival Items Found</h3>
-            <p className="font-sans text-xs text-ivory-400 max-w-md mx-auto">
+          <div className="card p-16 text-center space-y-4">
+            <Compass className="w-10 h-10 text-primary-400/60 mx-auto" />
+            <h3 className="heading-sm text-gray-900 dark:text-white">No Matching Archival Items Found</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
               Try adjusting your category tabs or clearing the search query filter.
             </p>
             <button
@@ -254,9 +254,9 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
                 setSearchQuery('')
               }}
               type="button"
-              className="font-mono text-2xs uppercase tracking-widest text-bronze-400 underline underline-offset-4"
+              className="btn btn-primary btn-sm"
             >
-              RESET ALL FILTERS
+              Reset All Filters
             </button>
           </div>
         )}

@@ -207,7 +207,7 @@ export default function MuseumExhibitionPage() {
   const activeTabDef = GALLERY_TABS.find((t) => t.key === activeTab)!
 
   return (
-    <div className="min-h-screen bg-charcoal-900 text-ivory-100 font-sans selection:bg-bronze-400 selection:text-charcoal-950 relative">
+    <div className="min-h-screen bg-sand-50 dark:bg-dark-bg text-gray-900 dark:text-ivory-100 font-sans transition-colors relative">
       {/* Skip to Main Content (Accessibility) */}
       <a
         href="#main-content"
@@ -238,11 +238,11 @@ export default function MuseumExhibitionPage() {
         {!showHero && (
           <div className="pt-20 sm:pt-24">
             {/* Back to Hero / Exhibition Intro Button */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-4 pb-2">
+            <div className="container-app pt-4 pb-2">
               <button
                 onClick={() => setShowHero(true)}
                 type="button"
-                className="inline-flex items-center space-x-2 text-ivory-400 hover:text-bronze-300 transition-colors font-mono text-2xs uppercase tracking-widest"
+                className="inline-flex items-center space-x-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-accent-400 transition-colors font-mono text-xs uppercase tracking-wider"
               >
                 <span>←</span>
                 <span>Exhibition Intro</span>
@@ -250,11 +250,11 @@ export default function MuseumExhibitionPage() {
             </div>
 
             {/* Tab Navigation Bar */}
-            <div className="sticky top-16 sm:top-[72px] z-30 bg-charcoal-900/95 backdrop-blur-md border-b border-ivory-100/10">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+            <div className="sticky top-16 sm:top-[72px] z-30 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-sand-200 dark:border-dark-border transition-colors">
+              <div className="container-app">
                 <nav
                   aria-label="Gallery Navigation"
-                  className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2"
+                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2.5"
                 >
                   {GALLERY_TABS.map((tab) => {
                     const Icon = tab.icon
@@ -265,20 +265,15 @@ export default function MuseumExhibitionPage() {
                         onClick={() => handleTabChange(tab.key)}
                         type="button"
                         title={tab.description}
-                        className={`group relative flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-sm font-sans text-xs font-medium uppercase tracking-widest transition-all duration-300 flex-shrink-0 ${
+                        className={`group relative flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-lg font-sans text-xs font-semibold tracking-wide transition-all duration-200 flex-shrink-0 ${
                           isActive
-                            ? 'text-bronze-300 bg-charcoal-800/80 border border-bronze-400/40'
-                            : 'text-ivory-400 hover:text-ivory-200 hover:bg-charcoal-800/40 border border-transparent'
+                            ? 'text-white bg-primary-600 dark:bg-primary-700 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-card'
                         }`}
                       >
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-bronze-400' : 'text-ivory-500 group-hover:text-ivory-300'}`} />
-                        {/* Full label on desktop, short label on mobile */}
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-accent-300' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'}`} />
                         <span className="hidden sm:inline">{tab.label}</span>
                         <span className="sm:hidden">{tab.shortLabel}</span>
-                        {/* Active indicator line */}
-                        {isActive && (
-                          <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-bronze-400 rounded-full" />
-                        )}
                       </button>
                     )
                   })}
@@ -287,20 +282,24 @@ export default function MuseumExhibitionPage() {
             </div>
 
             {/* Active Tab Description Header */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-ivory-100/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm bg-bronze-400/10 border border-bronze-400/30 flex items-center justify-center">
-                  <activeTabDef.icon className="w-5 h-5 text-bronze-400" />
+            <div className="container-app py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-sand-200 dark:border-dark-border">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/30 flex items-center justify-center flex-shrink-0">
+                  <activeTabDef.icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
-                  <h2 className="font-display font-semibold text-lg sm:text-xl text-ivory-100">{activeTabDef.label}</h2>
-                  <p className="font-sans text-xs text-ivory-400">{activeTabDef.description}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="badge badge-primary">GALLERY EXHIBIT</span>
+                    <span className="text-xs text-gray-400 font-mono">Stage {GALLERY_TABS.findIndex((t) => t.key === activeTab) + 1} of {GALLERY_TABS.length}</span>
+                  </div>
+                  <h2 className="heading-lg text-gray-900 dark:text-white">{activeTabDef.label}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-sans mt-0.5">{activeTabDef.description}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <LayoutGrid className="w-3.5 h-3.5 text-bronze-400" />
-                <span className="font-mono text-2xs text-ivory-400 uppercase tracking-wider">
-                  Gallery {GALLERY_TABS.findIndex((t) => t.key === activeTab) + 1} of {GALLERY_TABS.length}
+                <LayoutGrid className="w-4 h-4 text-primary-500" />
+                <span className="badge badge-gray font-mono">
+                  EXHIBIT {GALLERY_TABS.findIndex((t) => t.key === activeTab) + 1} / {GALLERY_TABS.length}
                 </span>
               </div>
             </div>

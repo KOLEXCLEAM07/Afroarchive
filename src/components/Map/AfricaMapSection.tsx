@@ -26,33 +26,31 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
     <section
       id="map"
       aria-label="Interactive Africa Map and Regional Discovery"
-      className="relative w-full bg-charcoal-900 text-ivory-100 py-24 border-t border-ivory-100/10 overflow-hidden"
+      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-12">
+      <div className="container-app space-y-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-ivory-100/10 pb-8">
-          <div className="space-y-4 max-w-2xl">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+          <div className="space-y-3 max-w-2xl">
             <div className="flex items-center space-x-3">
-              <Badge variant="bronze" size="sm">
-                CARTOGRAPHIC EXHIBITION
-              </Badge>
-              <span className="font-mono text-2xs uppercase tracking-widest text-ivory-400">
-                HISTORICAL REGIONAL ZONES
+              <span className="badge badge-primary">CARTOGRAPHIC EXHIBITION</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                Historical Regional Zones
               </span>
             </div>
 
-            <h2 className="font-display font-semibold text-3xl md:text-5xl text-ivory-100 tracking-tight">
-              INTERACTIVE AFRICA MAP
+            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
+              Interactive Africa Map
             </h2>
 
-            <p className="font-sans text-sm md:text-base text-ivory-300 font-light leading-relaxed">
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
               Explore the historical civilizational zones, trade routes, capital cities, and architectural traditions across Africa.
             </p>
           </div>
 
-          <div className="font-mono text-2xs text-bronze-400 uppercase tracking-widest">
-            SELECT REGIONAL ZONE TO INSPECT
+          <div className="badge badge-primary">
+            SELECT REGIONAL ZONE
           </div>
         </div>
 
@@ -60,7 +58,7 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column — Interactive Cartographic Vector Map */}
-          <div className="lg:col-span-7 bg-charcoal-850 p-6 md:p-8 rounded-lg border border-ivory-100/10 shadow-museum flex flex-col justify-between space-y-6 relative overflow-hidden">
+          <div className="lg:col-span-7 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6 relative overflow-hidden">
             
             {/* Map Header */}
             <div className="flex justify-between items-center text-ivory-400 font-mono text-2xs">
@@ -190,40 +188,40 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
           </div>
 
           {/* Right Column — Selected Region Civilizational Profile Panel */}
-          <div className="lg:col-span-5 bg-charcoal-850 p-6 md:p-8 rounded-lg border border-ivory-100/10 shadow-artifact flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-ivory-100/10 pb-3">
-                <Badge variant="bronze" size="sm">
+              <div className="flex items-center justify-between border-b border-sand-200 dark:border-dark-border pb-3">
+                <span className="badge badge-primary">
                   REGIONAL PROFILE
-                </Badge>
-                <span className="font-mono text-2xs text-ivory-400 uppercase">
+                </span>
+                <span className="font-mono text-xs text-gray-500 dark:text-gray-400 uppercase">
                   ZONE #0{MAP_REGIONS.findIndex((r) => r.id === selectedRegion.id) + 1}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="font-display font-semibold text-2xl text-ivory-100">
+                <h3 className="heading-lg text-gray-900 dark:text-white">
                   {selectedRegion.name}
                 </h3>
-                <p className="font-serif italic text-xs text-bronze-300">
+                <p className="font-serif italic text-sm text-primary-600 dark:text-accent-400">
                   {selectedRegion.subtitle}
                 </p>
               </div>
 
-              <p className="font-sans text-xs text-ivory-300 font-light leading-relaxed">
+              <p className="font-sans text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 {selectedRegion.summary}
               </p>
             </div>
 
             {/* Structured Regional Metadata Table */}
-            <div className="space-y-3 pt-4 border-t border-ivory-100/10">
+            <div className="space-y-3 pt-4 border-t border-sand-200 dark:border-dark-border">
               <div>
-                <span className="font-mono text-[10px] uppercase text-bronze-400 tracking-wider block mb-1">
-                  HISTORIC EMPIRES & KINGDOMS:
+                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
+                  Historic Empires & Kingdoms:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedRegion.empires.map((emp) => (
-                    <span key={emp} className="font-mono text-2xs text-ivory-200 bg-charcoal-900 px-2 py-1 rounded border border-ivory-100/5">
+                    <span key={emp} className="badge badge-gray text-xs">
                       {emp}
                     </span>
                   ))}
@@ -231,33 +229,31 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
               </div>
 
               <div>
-                <span className="font-mono text-[10px] uppercase text-bronze-400 tracking-wider block mb-1">
-                  MAJOR TRADE GOODS:
+                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
+                  Major Trade Goods:
                 </span>
-                <span className="font-sans text-xs text-ivory-300">
+                <span className="font-sans text-xs text-gray-600 dark:text-gray-300">
                   {selectedRegion.tradeGoods.join(' · ')}
                 </span>
               </div>
 
               <div>
-                <span className="font-mono text-[10px] uppercase text-bronze-400 tracking-wider block mb-1">
-                  ARCHITECTURAL STYLE:
+                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
+                  Architectural Style:
                 </span>
-                <span className="font-sans text-xs text-ivory-300">
+                <span className="font-sans text-xs text-gray-600 dark:text-gray-300">
                   {selectedRegion.architecturalStyle}
                 </span>
               </div>
             </div>
 
             {/* Action Button to Filter Catalog */}
-            <Button
-              variant="primary"
-              size="md"
+            <button
               onClick={handleExploreRegion}
-              className="w-full"
+              className="btn btn-primary btn-md w-full"
             >
-              EXPLORE REGIONAL ARCHIVE
-            </Button>
+              Explore Regional Archive
+            </button>
           </div>
         </div>
       </div>
