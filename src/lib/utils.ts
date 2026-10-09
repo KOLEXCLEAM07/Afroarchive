@@ -39,9 +39,18 @@ export function slugify(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .trim()
+    .replace(/^-|-$/g, '')
+    .slice(0, 80)
+    .replace(/-$/, '')
+}
+
+/** Unique, URL-safe slug that never starts with a hyphen, even for non-Latin titles. */
+export function uniqueSlug(text: string): string {
+  const base = slugify(text) || 'article'
+  return `${base}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 // ─── Excerpt generation ───────────────────────────────────────

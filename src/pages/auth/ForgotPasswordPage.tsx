@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, BookOpen, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { friendlyAuthError } from '@/lib/authErrors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth()
+  useDocumentTitle('Reset your password')
   const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -14,10 +17,10 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setLoading(true); setError(null)
     try {
-      await resetPassword(email)
+      await resetPassword(email.trim())
       setSuccess(true)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email')
+      setError(friendlyAuthError(err, 'Could not send the reset email. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -40,7 +43,7 @@ export default function ForgotPasswordPage() {
               </div>
               <h1 className="heading-md text-gray-900 dark:text-white mb-3">Check your inbox</h1>
               <p className="text-gray-500 dark:text-gray-400 mb-8">
-                We've sent a password reset link to <strong className="text-gray-900 dark:text-white">{email}</strong>
+                If an account exists for <strong className="text-gray-900 dark:text-white">{email}</strong>, you'll receive a reset link shortly. Check your spam folder too.
               </p>
               <Link to="/auth/login" className="btn btn-primary btn-md w-full">Back to Sign In</Link>
             </>
@@ -65,7 +68,7 @@ export default function ForgotPasswordPage() {
                   <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email address</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                    <input id="forgot-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input pl-10" />
+                    <input id="forgot-email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input pl-10" />
                   </div>
                 </div>
                 <button id="forgot-submit-btn" type="submit" disabled={loading} className="w-full btn btn-primary btn-md">

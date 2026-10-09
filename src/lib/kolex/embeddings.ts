@@ -11,40 +11,67 @@ import { EmbeddingProvider, EmbeddingProviderType } from './types';
 export const TARGET_EMBEDDING_DIMENSION = 768;
 
 /**
+ * Server-side environment only. In the browser (Vite) `process` does not exist, and
+ * API keys must never be bundled, so VITE_-prefixed variables are deliberately ignored.
+ */
+const isNodeRuntime =
+  typeof process !== 'undefined' &&
+  typeof process.versions === 'object' &&
+  !!process.versions?.node &&
+  typeof window === 'undefined';
+
+function serverEnv(name: string): string | undefined {
+  if (!isNodeRuntime) return undefined;
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
+/**
  * 1. Google Gemini Embedding Provider (text-embedding-004)
  */
 export class GeminiEmbeddingProvider implements EmbeddingProvider {
   readonly providerName: EmbeddingProviderType = 'gemini';
-  readonly modelName: string = 'text-embedding-004';
+  // Must match GEMINI_EMBED_MODEL used by the `curator` Edge Function.
+  readonly modelName: string;
   readonly dimension: number = TARGET_EMBEDDING_DIMENSION;
   private readonly apiKey: string;
 
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!isNodeRuntime) {
+      throw new Error('Gemini embeddings are only available in server-side scripts.');
+    }
+    const key = apiKey || serverEnv('GEMINI_API_KEY');
     if (!key || key === 'placeholder-gemini-key') {
       throw new Error('Valid GEMINI_API_KEY is required for Gemini embeddings.');
     }
     this.apiKey = key;
+    this.modelName = serverEnv('GEMINI_EMBED_MODEL') || 'text-embedding-004';
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:embedContent?key=${this.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:embedContent`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify({
         model: `models/${this.modelName}`,
         content: { parts: [{ text: text.slice(0, 8000) }] },
+        taskType: 'RETRIEVAL_DOCUMENT',
+        outputDimensionality: this.dimension,
       }),
     });
 
     if (!response.ok) {
-      const errText = await response.text();
+      const errText = (await response.text()).slice(0, 300);
       throw new Error(`Gemini Embedding API Error (${response.status}): ${errText}`);
     }
 
     const data = (await response.json()) as { embedding: { values: number[] } };
-    return data.embedding.values;
+    const values = data.embedding.values;
+    // Normalise so cosine similarity is consistent across models (some return unnormalised
+    // vectors when outputDimensionality is reduced).
+    const norm = Math.sqrt(values.reduce((sum, v) => sum + v * v, 0)) || 1;
+    return values.map((v) => v / norm);
   }
 
   async generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
@@ -66,7 +93,10 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   private readonly apiKey: string;
 
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.OPENAI_API_KEY;
+    if (!isNodeRuntime) {
+      throw new Error('OpenAI embeddings are only available in server-side scripts.');
+    }
+    const key = apiKey || serverEnv('OPENAI_API_KEY');
     if (!key) {
       throw new Error('Valid OPENAI_API_KEY is required for OpenAI embeddings.');
     }
@@ -228,7 +258,12 @@ export class LocalSemanticEmbeddingProvider implements EmbeddingProvider {
  * Factory function to instantiate the configured embedding provider
  */
 export function getEmbeddingProvider(): EmbeddingProvider {
-  const configuredProvider = (process.env.EMBEDDING_PROVIDER || '').toLowerCase().trim();
+  // In the browser only the local provider may run: no keys, no third-party calls.
+  if (!isNodeRuntime) {
+    return new LocalSemanticEmbeddingProvider();
+  }
+
+  const configuredProvider = (serverEnv('EMBEDDING_PROVIDER') || '').toLowerCase();
 
   // Explicit provider choice
   if (configuredProvider === 'gemini') {
@@ -242,7 +277,7 @@ export function getEmbeddingProvider(): EmbeddingProvider {
   }
 
   // Automatic detection based on available credentials
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const geminiKey = serverEnv('GEMINI_API_KEY');
   if (geminiKey && geminiKey !== 'placeholder-gemini-key') {
     try {
       return new GeminiEmbeddingProvider(geminiKey);
@@ -251,9 +286,10 @@ export function getEmbeddingProvider(): EmbeddingProvider {
     }
   }
 
-  if (process.env.OPENAI_API_KEY) {
+  const openAiKey = serverEnv('OPENAI_API_KEY');
+  if (openAiKey) {
     try {
-      return new OpenAIEmbeddingProvider(process.env.OPENAI_API_KEY);
+      return new OpenAIEmbeddingProvider(openAiKey);
     } catch {
       // Fallback
     }

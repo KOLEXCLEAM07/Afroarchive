@@ -1,80 +1,76 @@
 import React, { useState } from 'react'
-import { MapPin, Globe, Compass, ArrowRight, Landmark, Layers, Sparkles, BookOpen } from 'lucide-react'
+import { Compass } from 'lucide-react'
 import { MAP_REGIONS, RegionProfile } from '../../data/mapData'
-import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
 
-export interface AfricaMapSectionProps {
-  onSelectRegionFilter?: (regionKey: string) => void
+const REGION_NAMES: Record<string, string> = {
+  west: 'West Africa',
+  east: 'East Africa',
+  north: 'North Africa',
+  central: 'Central Africa',
+  southern: 'Southern Africa',
 }
 
-export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegionFilter }) => {
+export interface AfricaMapSectionProps {
+  onExploreRegion?: (regionKey: string) => void
+}
+
+export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onExploreRegion }) => {
   const [selectedRegion, setSelectedRegion] = useState<RegionProfile>(MAP_REGIONS[0])
   const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null)
 
   const handleExploreRegion = () => {
-    if (onSelectRegionFilter) {
-      onSelectRegionFilter(selectedRegion.regionKey)
-    }
-    const elem = document.getElementById('archive')
-    if (elem) {
-      elem.scrollIntoView({ behavior: 'smooth' })
-    }
+    onExploreRegion?.(selectedRegion.regionKey)
   }
 
   return (
     <section
       id="map"
       aria-label="Interactive Africa Map and Regional Discovery"
-      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors overflow-hidden"
+      className="py-12 md:py-16 bg-dark-bg border-t border-white/10 text-ivory-100 overflow-hidden"
     >
       <div className="container-app space-y-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
           <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center space-x-3">
-              <span className="badge badge-primary">CARTOGRAPHIC EXHIBITION</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                Historical Regional Zones
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="eyebrow">Cartographic exhibition</span>
+              <span className="text-xs text-ivory-400">
+                Historical regional zones
               </span>
             </div>
 
-            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
-              Interactive Africa Map
+            <h2 className="heading-xl text-white">
+              Interactive Africa map
             </h2>
 
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
+            <p className="text-sm md:text-base text-ivory-300 leading-relaxed">
               Explore the historical civilizational zones, trade routes, capital cities, and architectural traditions across Africa.
             </p>
           </div>
 
-          <div className="badge badge-primary">
-            SELECT REGIONAL ZONE
-          </div>
+          <span className="badge badge-gray self-start md:self-auto">
+            Select a regional zone
+          </span>
         </div>
 
         {/* Map & Region Detail Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column — Interactive Cartographic Vector Map */}
-          <div className="lg:col-span-7 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6 relative overflow-hidden">
+          <div className="lg:col-span-7 card rounded-2xl p-6 md:p-8 flex flex-col justify-between space-y-6 relative overflow-hidden">
             
             {/* Map Header */}
-            <div className="flex justify-between items-center text-ivory-400 font-mono text-2xs">
-              <div className="flex items-center space-x-2">
-                <Compass className="w-4 h-4 text-bronze-400" />
-                <span>AFRICAN HISTORICAL CARTOGRAPHY</span>
+            <div className="flex justify-between items-center text-ivory-400 text-xs">
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-accent-400" aria-hidden="true" />
+                <span>Historical regions (schematic, not to scale)</span>
               </div>
-              <span>SCALE: 1 : 10,000,000</span>
             </div>
 
             {/* Interactive SVG Map Vector Representation */}
-            <div className="relative aspect-[4/3.8] w-full my-auto flex items-center justify-center bg-[#131316] rounded border border-ivory-100/5 p-4 overflow-hidden">
+            <div className="relative aspect-[4/3.8] w-full my-auto flex items-center justify-center bg-dark-surface rounded-xl border border-white/5 p-4 overflow-hidden">
               
-              {/* Subtle Grid Lines Overlay */}
-              <div className="absolute inset-0 bg-archival-grid opacity-30 pointer-events-none" />
-
               {/* Africa Continent Outline Graphic */}
               <svg
                 viewBox="0 0 100 100"
@@ -156,7 +152,7 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
                         y={region.coordinates.y + 1.5}
                         fill={isSelected ? '#D4A034' : '#C5BAA5'}
                         fontSize="3"
-                        fontFamily="JetBrains Mono"
+                        fontFamily="'Plus Jakarta Sans', system-ui, sans-serif"
                         fontWeight={isSelected ? 'bold' : 'normal'}
                         className="select-none transition-colors duration-300"
                       >
@@ -169,16 +165,17 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
             </div>
 
             {/* Map Region Quick Buttons */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-ivory-100/10">
+            <div className="flex flex-wrap gap-2 pt-4 border-t border-white/10">
               {MAP_REGIONS.map((reg) => (
                 <button
                   key={reg.id}
                   onClick={() => setSelectedRegion(reg)}
                   type="button"
-                  className={`font-mono text-2xs px-3 py-1.5 rounded uppercase tracking-wider transition-all duration-300 ${
+                  aria-pressed={selectedRegion.id === reg.id}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-200 ${
                     selectedRegion.id === reg.id
-                      ? 'bg-bronze-400 text-charcoal-950 font-bold'
-                      : 'bg-charcoal-900 text-ivory-300 border border-ivory-100/10 hover:border-bronze-400/40'
+                      ? 'border-accent-400/50 bg-accent-400/15 text-accent-300'
+                      : 'border-white/10 bg-white/5 text-ivory-300 hover:border-white/25 hover:text-white'
                   }`}
                 >
                   {reg.name.split(' ')[0]}
@@ -188,40 +185,40 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
           </div>
 
           {/* Right Column — Selected Region Civilizational Profile Panel */}
-          <div className="lg:col-span-5 card p-6 md:p-8 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 card rounded-2xl p-6 md:p-8 flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-sand-200 dark:border-dark-border pb-3">
-                <span className="badge badge-primary">
-                  REGIONAL PROFILE
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <span className="eyebrow">
+                  Regional profile
                 </span>
-                <span className="font-mono text-xs text-gray-500 dark:text-gray-400 uppercase">
-                  ZONE #0{MAP_REGIONS.findIndex((r) => r.id === selectedRegion.id) + 1}
+                <span className="text-xs text-ivory-400">
+                  Zone 0{MAP_REGIONS.findIndex((r) => r.id === selectedRegion.id) + 1}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="heading-lg text-gray-900 dark:text-white">
+                <h3 className="heading-lg text-white">
                   {selectedRegion.name}
                 </h3>
-                <p className="font-serif italic text-sm text-primary-600 dark:text-accent-400">
+                <p className="font-serif italic text-base text-accent-300">
                   {selectedRegion.subtitle}
                 </p>
               </div>
 
-              <p className="font-sans text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p className="text-sm text-ivory-300 leading-relaxed">
                 {selectedRegion.summary}
               </p>
             </div>
 
             {/* Structured Regional Metadata Table */}
-            <div className="space-y-3 pt-4 border-t border-sand-200 dark:border-dark-border">
+            <div className="space-y-4 pt-4 border-t border-white/10">
               <div>
-                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
-                  Historic Empires & Kingdoms:
+                <span className="text-xs font-semibold text-accent-300 block mb-1.5">
+                  Historic empires & kingdoms
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedRegion.empires.map((emp) => (
-                    <span key={emp} className="badge badge-gray text-xs">
+                    <span key={emp} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-ivory-200">
                       {emp}
                     </span>
                   ))}
@@ -229,31 +226,34 @@ export const AfricaMapSection: React.FC<AfricaMapSectionProps> = ({ onSelectRegi
               </div>
 
               <div>
-                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
-                  Major Trade Goods:
+                <span className="text-xs font-semibold text-accent-300 block mb-1.5">
+                  Major trade goods
                 </span>
-                <span className="font-sans text-xs text-gray-600 dark:text-gray-300">
+                <span className="text-sm text-ivory-300">
                   {selectedRegion.tradeGoods.join(' · ')}
                 </span>
               </div>
 
               <div>
-                <span className="text-xs font-semibold text-primary-600 dark:text-accent-400 uppercase tracking-wider block mb-1">
-                  Architectural Style:
+                <span className="text-xs font-semibold text-accent-300 block mb-1.5">
+                  Architectural style
                 </span>
-                <span className="font-sans text-xs text-gray-600 dark:text-gray-300">
+                <span className="text-sm text-ivory-300">
                   {selectedRegion.architecturalStyle}
                 </span>
               </div>
             </div>
 
             {/* Action Button to Filter Catalog */}
-            <button
-              onClick={handleExploreRegion}
-              className="btn btn-primary btn-md w-full"
-            >
-              Explore Regional Archive
-            </button>
+            {onExploreRegion && (
+              <button
+                onClick={handleExploreRegion}
+                type="button"
+                className="btn btn-primary btn-md w-full"
+              >
+                Browse {REGION_NAMES[selectedRegion.regionKey] ?? 'this region'} in the collection
+              </button>
+            )}
           </div>
         </div>
       </div>

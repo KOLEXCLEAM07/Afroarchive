@@ -1,4 +1,5 @@
 import React from 'react'
+import { cn } from '@/lib/utils'
 
 export interface BadgeProps {
   children: React.ReactNode
@@ -7,30 +8,15 @@ export interface BadgeProps {
   className?: string
 }
 
-export const Badge: React.FC<BadgeProps> = ({
-  children,
-  variant = 'bronze',
-  size = 'sm',
-  className = '',
-}) => {
-  const sizeStyles = {
-    sm: 'text-metadata px-2.5 py-1 tracking-widest',
-    md: 'text-xs px-3.5 py-1.5 tracking-widest',
-  }
+// Maps the museum's badge names onto the site-wide .badge styles.
+const VARIANTS = {
+  bronze: 'badge-accent',
+  ivory: 'badge-gray',
+  dark: 'badge-gray',
+  burgundy: 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-800/50',
+  savanna: 'badge-primary',
+} as const
 
-  const variantStyles = {
-    bronze: 'bg-bronze-900/60 text-bronze-300 border border-bronze-400/30',
-    ivory: 'bg-ivory-100/10 text-ivory-100 border border-ivory-100/20',
-    dark: 'bg-charcoal-800 text-ivory-300 border border-charcoal-700',
-    burgundy: 'bg-burgundy-900/60 text-red-200 border border-burgundy-700/40',
-    savanna: 'bg-savanna-900/60 text-emerald-200 border border-savanna-600/40',
-  }
-
-  return (
-    <span
-      className={`inline-flex items-center font-mono font-medium uppercase rounded-sm transition-colors duration-300 ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
-    >
-      {children}
-    </span>
-  )
-}
+export const Badge: React.FC<BadgeProps> = ({ children, variant = 'bronze', size = 'sm', className }) => (
+  <span className={cn('badge', size === 'md' && 'text-xs px-3 py-1', VARIANTS[variant], className)}>{children}</span>
+)

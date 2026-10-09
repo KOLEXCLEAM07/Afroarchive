@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { X, Search, Bookmark, Keyboard } from 'lucide-react'
+import { useModalStack } from '../../hooks/useScrollLock'
 
 interface ShortcutsModalProps {
   isOpen: boolean
@@ -16,65 +17,35 @@ interface ShortcutGroup {
 
 const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
-    title: 'Navigation',
+    title: 'Museum',
     shortcuts: [
-      { keys: ['G', '1'], description: 'Jump to Hero / Exhibition Opening' },
-      { keys: ['G', '2'], description: 'Jump to Archive Explorer' },
-      { keys: ['G', '3'], description: 'Jump to Civilizations Timeline' },
-      { keys: ['G', '4'], description: 'Jump to Interactive Africa Map' },
-      { keys: ['G', '5'], description: 'Jump to Stories & Philosophies' },
-      { keys: ['G', '6'], description: 'Jump to AI Curator' },
-      { keys: ['G', '7'], description: 'Jump to About & Mission' },
-    ],
-  },
-  {
-    title: 'Exhibition Controls',
-    shortcuts: [
-      { keys: ['⌘', 'K'], description: 'Open Global Search' },
-      { keys: ['Ctrl', 'K'], description: 'Open Global Search (Windows/Linux)' },
-      { keys: ['B'], description: 'Toggle Bookmarks Drawer' },
-      { keys: ['Esc'], description: 'Close any open modal or drawer' },
-    ],
-  },
-  {
-    title: 'Developer Tools',
-    shortcuts: [
-      { keys: ['Shift', 'D'], description: 'Toggle Design Token Inspector' },
+      { keys: ['Ctrl', 'K'], description: 'Open search (⌘ K on Mac)' },
+      { keys: ['B'], description: 'Open saved items' },
+      { keys: ['1 – 6'], description: 'Switch gallery (after leaving the intro)' },
+      { keys: ['?'], description: 'Show or hide this guide' },
+      { keys: ['Esc'], description: 'Close the open window or panel' },
     ],
   },
   {
     title: 'Accessibility',
     shortcuts: [
-      { keys: ['Tab'], description: 'Navigate interactive elements forward' },
-      { keys: ['Shift', 'Tab'], description: 'Navigate interactive elements backward' },
-      { keys: ['Enter', 'Space'], description: 'Activate focused element' },
-      { keys: ['?'], description: 'Show this keyboard shortcuts guide' },
+      { keys: ['Tab'], description: 'Move to the next control' },
+      { keys: ['Shift', 'Tab'], description: 'Move to the previous control' },
+      { keys: ['Enter', 'Space'], description: 'Activate the focused control' },
     ],
   },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          title: 'Developer',
+          shortcuts: [{ keys: ['Shift', 'D'], description: 'Toggle design token inspector' }],
+        },
+      ]
+    : []),
 ]
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose }) => {
-  // Close on ESC
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
-
-  // Lock body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen])
+  const panelRef = useModalStack<HTMLDivElement>(isOpen, onClose)
 
   if (!isOpen) return null
 
@@ -87,28 +58,32 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-charcoal-950/85 backdrop-blur-md"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Panel */}
-      <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-charcoal-900 border border-ivory-100/12 rounded-sm shadow-2xl animate-fade-in">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-dark-surface border border-white/10 rounded-2xl shadow-2xl animate-fade-in outline-none"
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-charcoal-900 border-b border-ivory-100/10 px-6 py-5 flex items-center justify-between z-10">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-sm bg-bronze-400/10 border border-bronze-400/30 flex items-center justify-center">
-              <Keyboard className="w-4 h-4 text-bronze-400" />
+        <div className="sticky top-0 bg-dark-surface border-b border-white/10 px-6 py-5 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-accent-400/10 border border-accent-400/30 flex items-center justify-center">
+              <Keyboard className="w-4 h-4 text-accent-400" aria-hidden="true" />
             </div>
             <div>
               <h2
                 id="shortcuts-modal-title"
-                className="font-display text-base font-semibold text-ivory-100 tracking-wide"
+                className="heading-md text-white"
               >
-                Keyboard Shortcuts
+                Keyboard shortcuts
               </h2>
-              <p className="font-mono text-[9px] text-ivory-500 tracking-widest uppercase mt-0.5">
-                AFROARCHIVE Exhibition Controls
+              <p className="text-xs text-ivory-400 mt-0.5">
+                AfroArchive museum
               </p>
             </div>
           </div>
@@ -116,9 +91,9 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
             type="button"
             onClick={onClose}
             aria-label="Close keyboard shortcuts guide"
-            className="p-2 text-ivory-500 hover:text-ivory-100 hover:bg-charcoal-800 rounded-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze-400"
+            className="p-2 rounded-lg text-ivory-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -126,26 +101,26 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
         <div className="px-6 py-6 space-y-8">
           {SHORTCUT_GROUPS.map((group) => (
             <div key={group.title}>
-              <h3 className="font-mono text-[10px] uppercase tracking-[0.2em] text-bronze-400 mb-4">
+              <h3 className="eyebrow mb-3">
                 {group.title}
               </h3>
-              <div className="space-y-2.5">
+              <div>
                 {group.shortcuts.map((shortcut, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between py-2.5 border-b border-ivory-100/5 last:border-0 group"
+                    className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0 group"
                   >
-                    <span className="font-sans text-sm text-ivory-300 group-hover:text-ivory-100 transition-colors">
+                    <span className="text-sm text-ivory-300 group-hover:text-ivory-100 transition-colors">
                       {shortcut.description}
                     </span>
-                    <div className="flex items-center space-x-1.5 flex-shrink-0 ml-4">
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
                       {shortcut.keys.map((key, kIdx) => (
                         <React.Fragment key={kIdx}>
-                          <kbd className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 bg-charcoal-800 border border-ivory-100/15 rounded text-ivory-200 font-mono text-[11px] shadow-sm">
+                          <kbd className="inline-flex items-center justify-center min-w-[26px] h-6 rounded-md border border-white/15 bg-white/5 px-1.5 font-mono text-xs text-ivory-200">
                             {key}
                           </kbd>
                           {kIdx < shortcut.keys.length - 1 && (
-                            <span className="font-mono text-[9px] text-ivory-600">+</span>
+                            <span className="text-xs text-ivory-500">+</span>
                           )}
                         </React.Fragment>
                       ))}
@@ -157,23 +132,23 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
           ))}
 
           {/* Quick Action Row */}
-          <div className="flex flex-wrap gap-3 pt-2 border-t border-ivory-100/8">
-            <div className="flex items-center space-x-2 px-3 py-2 bg-charcoal-800/60 border border-ivory-100/8 rounded-sm">
-              <Search className="w-3.5 h-3.5 text-bronze-400" />
-              <span className="font-mono text-[10px] text-ivory-400 tracking-wider">
-                CTRL+K — Global Search
+          <div className="flex flex-wrap gap-2 pt-5 border-t border-white/10">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+              <Search className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
+              <span className="text-xs text-ivory-300">
+                Ctrl+K — Search
               </span>
             </div>
-            <div className="flex items-center space-x-2 px-3 py-2 bg-charcoal-800/60 border border-ivory-100/8 rounded-sm">
-              <Bookmark className="w-3.5 h-3.5 text-bronze-400" />
-              <span className="font-mono text-[10px] text-ivory-400 tracking-wider">
-                B — Saved Items
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+              <Bookmark className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
+              <span className="text-xs text-ivory-300">
+                B — Saved items
               </span>
             </div>
-            <div className="flex items-center space-x-2 px-3 py-2 bg-charcoal-800/60 border border-ivory-100/8 rounded-sm">
-              <Keyboard className="w-3.5 h-3.5 text-bronze-400" />
-              <span className="font-mono text-[10px] text-ivory-400 tracking-wider">
-                ? — This Guide
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+              <Keyboard className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
+              <span className="text-xs text-ivory-300">
+                ? — This guide
               </span>
             </div>
           </div>

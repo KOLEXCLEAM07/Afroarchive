@@ -84,7 +84,9 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
   const [spot, setSpot] = useState<SpotlightPos>({ x: 50, y: 50 })
   const [isHovering, setIsHovering] = useState(false)
   const [isTouching, setIsTouching] = useState(false)
+  const [isKeyboardTilting, setIsKeyboardTilting] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageFailed, setImageFailed] = useState(false)
 
   /* ---- refs ----------------------------------------------------- */
   const containerRef = useRef<HTMLDivElement>(null)
@@ -92,7 +94,7 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
   const floatRafRef = useRef<number | null>(null)
 
   /* ---- interaction flag ----------------------------------------- */
-  const interacting = isHovering || isTouching
+  const interacting = isHovering || isTouching || isKeyboardTilting
 
   /* ---- pointer handlers ----------------------------------------- */
   const handlePointerMove = useCallback(
@@ -157,7 +159,36 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
     setSpot({ x: 50, y: 50 })
     setIsHovering(false)
     setIsTouching(false)
+    setIsKeyboardTilting(false)
   }, [])
+
+  /* ---- keyboard tilt -------------------------------------------- */
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = 4
+      const clamp = (v: number) => Math.max(-MAX_TILT, Math.min(MAX_TILT, v))
+      let dx = 0
+      let dy = 0
+      if (e.key === 'ArrowLeft') dy = -step
+      else if (e.key === 'ArrowRight') dy = step
+      else if (e.key === 'ArrowUp') dx = step
+      else if (e.key === 'ArrowDown') dx = -step
+      else if (e.key === 'Home' || e.key === '0') {
+        e.preventDefault()
+        handleReset()
+        return
+      } else return
+
+      e.preventDefault()
+      // Start from neutral rather than the idle-float angle on the first key press
+      const base = isKeyboardTilting ? tilt : { rotateX: 0, rotateY: 0 }
+      const next = { rotateX: clamp(base.rotateX + dx), rotateY: clamp(base.rotateY + dy) }
+      setIsKeyboardTilting(true)
+      setTilt(next)
+      setSpot({ x: 50 + (next.rotateY / MAX_TILT) * 30, y: 50 - (next.rotateX / MAX_TILT) * 30 })
+    },
+    [handleReset, isKeyboardTilting, tilt],
+  )
 
   /* ---- idle float animation ------------------------------------- */
   useEffect(() => {
@@ -224,14 +255,14 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
 
   /* ---- render --------------------------------------------------- */
   return (
-    <div
-      className={`flex flex-col items-center select-none ${className}`}
-      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-    >
+    <div className={`flex flex-col items-center select-none ${className}`}>
       {/* ─── Scene wrapper (perspective origin) ─── */}
       <div
         ref={containerRef}
-        className="relative cursor-grab active:cursor-grabbing"
+        tabIndex={0}
+        role="img"
+        aria-label={`${title}. Use the arrow keys to tilt the image and Home to reset.`}
+        className="relative rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         style={{
           perspective: '1200px',
           perspectiveOrigin: '50% 50%',
@@ -245,6 +276,10 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onDoubleClick={handleReset}
+        onKeyDown={onKeyDown}
+        onBlur={() => {
+          if (isKeyboardTilting) handleReset()
+        }}
       >
         {/* ─── 3‑D Tilting card ─── */}
         <div
@@ -260,53 +295,45 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
         >
           {/* ── Outer frame / border ── */}
           <div
-            className="relative overflow-hidden rounded-lg"
+            className="relative overflow-hidden rounded-xl border border-white/10 bg-dark-bg"
             style={{
-              border: '3px solid rgba(205, 164, 100, 0.35)',
-              boxShadow: [
-                '0 4px 6px rgba(0,0,0,0.4)',
-                '0 20px 50px rgba(0,0,0,0.55)',
-                `inset 0 0 60px rgba(0,0,0,0.3)`,
-                `0 0 80px rgba(205, 164, 100, ${interacting ? 0.15 : 0.06})`,
-              ].join(', '),
-              background: '#1a1714',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.45)',
             }}
           >
             {/* ── Image ── */}
+            {imageFailed && (
+              <div
+                className="flex items-center justify-center text-sm text-ivory-400 bg-dark-bg"
+                style={{ minHeight: '280px' }}
+              >
+                Image could not be loaded
+              </div>
+            )}
             <img
               src={imageSrc}
-              alt={title}
+              alt=""
               referrerPolicy="no-referrer"
               draggable={false}
               onLoad={() => setImageLoaded(true)}
-              onError={(e) => {
-                console.warn('Artifact 3D viewer image load failed:', imageSrc)
-                // Fallback to placeholder if image fails to load
+              onError={() => {
+                setImageFailed(true)
                 setImageLoaded(true)
               }}
-              className="block w-full h-auto"
+              className={imageFailed ? 'hidden' : 'block w-full h-auto'}
               style={{
                 opacity: imageLoaded ? 1 : 0,
                 transition: 'opacity 0.6s ease',
                 minHeight: '280px',
                 objectFit: 'cover',
-                background: '#161412',
               }}
             />
 
             {/* ── Loading placeholder ── */}
             {!imageLoaded && (
               <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ background: '#161412' }}
+                className="absolute inset-0 flex items-center justify-center bg-dark-bg"
               >
-                <div
-                  className="w-10 h-10 rounded-full border-2 animate-spin"
-                  style={{
-                    borderColor: 'rgba(205,164,100,0.3)',
-                    borderTopColor: 'rgba(205,164,100,0.8)',
-                  }}
-                />
+                <div className="w-8 h-8 rounded-full border-2 border-accent-400/25 border-t-accent-400 animate-spin" />
               </div>
             )}
 
@@ -337,88 +364,32 @@ const ArtifactViewer3D: React.FC<ArtifactViewer3DProps> = ({
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)',
+                  'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.3) 100%)',
               }}
             />
           </div>
         </div>
       </div>
 
-      {/* ─── Museum pedestal ─── */}
-      <div className="flex flex-col items-center w-full" style={{ maxWidth: '480px' }}>
-        {/* Pedestal neck */}
-        <div
-          style={{
-            width: '60%',
-            height: '8px',
-            background: 'linear-gradient(to bottom, #2a2520, #1e1b17)',
-            borderRadius: '0 0 2px 2px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          }}
-        />
-        {/* Pedestal base */}
-        <div
-          style={{
-            width: '75%',
-            height: '6px',
-            background: 'linear-gradient(to bottom, #242019, #161412)',
-            borderRadius: '0 0 4px 4px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-          }}
-        />
-        {/* Pedestal shadow on "floor" */}
-        <div
-          style={{
-            width: '85%',
-            height: '18px',
-            background:
-              'radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, transparent 70%)',
-            marginTop: '-2px',
-          }}
-        />
-      </div>
-
       {/* ─── Title plaque ─── */}
-      <div
-        className="mt-3 px-6 py-2 text-center rounded"
-        style={{
-          background: 'linear-gradient(135deg, rgba(42,37,32,0.8), rgba(30,27,23,0.9))',
-          border: '1px solid rgba(205, 164, 100, 0.2)',
-          maxWidth: '420px',
-        }}
-      >
-        <h3
-          className="text-sm tracking-widest uppercase"
-          style={{
-            color: 'rgba(205, 164, 100, 0.7)',
-            letterSpacing: '0.15em',
-            margin: 0,
-            fontWeight: 400,
-          }}
-        >
-          artifact
+      <div className="mt-4 px-5 py-2.5 text-center rounded-xl border border-white/10 bg-dark-surface" style={{ maxWidth: '420px' }}>
+        <h3 className="eyebrow m-0">
+          Artifact
         </h3>
-        <p
-          className="mt-1 text-base font-medium leading-snug"
-          style={{
-            color: '#f5f0e8',
-            margin: '4px 0 0',
-          }}
-        >
+        <p className="mt-1 font-serif font-bold text-lg text-white leading-snug">
           {title}
         </p>
       </div>
 
       {/* ─── Interaction hint ─── */}
       <p
-        className="mt-3 text-xs tracking-wide"
+        className="mt-3 text-xs text-ivory-500"
         style={{
-          color: 'rgba(205, 164, 100, 0.35)',
           transition: 'opacity 0.4s ease',
           opacity: interacting ? 0 : 1,
         }}
       >
-        drag to rotate · double‑click to reset
+        Move the pointer or use arrow keys to tilt · double‑click to reset
       </p>
     </div>
   )

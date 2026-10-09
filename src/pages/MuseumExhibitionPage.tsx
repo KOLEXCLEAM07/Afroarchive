@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Navbar } from '../components/Navbar/Navbar'
+import { useSearchParams } from 'react-router-dom'
 import { Hero } from '../components/Hero/Hero'
 import { ArchiveExplorer } from '../components/Archive/ArchiveExplorer'
 import { TimelineSection } from '../components/Timeline/TimelineSection'
@@ -7,21 +7,20 @@ import { AfricaMapSection } from '../components/Map/AfricaMapSection'
 import { StoriesSection } from '../components/Stories/StoriesSection'
 import { AiCuratorSection } from '../components/ai/AiCuratorSection'
 import { AboutSection } from '../components/About/AboutSection'
-import { Footer } from '../components/layout/Footer'
 import { ArtifactDetailDrawer } from '../components/Archive/ArtifactDetailDrawer'
 import { StoryReaderModal } from '../components/Stories/StoryReaderModal'
 import { SearchModal } from '../components/Navbar/SearchModal'
-import { SignInModal } from '../components/Navbar/SignInModal'
 import { BookmarksDrawer } from '../components/Navbar/BookmarksDrawer'
 import { ShortcutsModal } from '../components/layout/ShortcutsModal'
 import { DesignTokensDoc } from '../components/DevTools/DesignTokensDoc'
 import { useBookmarks } from '../hooks/useBookmarks'
-import { ArtifactItem } from '../types/archiveTypes'
+import { hasOpenModal } from '../hooks/useScrollLock'
+import { ARTIFACTS_DATA } from '../data/archiveData'
+import { STORIES_DATA } from '../data/storyData'
+import { ArtifactItem, RegionFilter } from '../types/archiveTypes'
 import { StoryItem } from '../types/storyTypes'
-import { BookOpen, Clock, MapPin, Scroll, Sparkles, Info, LayoutGrid } from 'lucide-react'
-
-// Museum gallery tab definitions
-type GalleryTab = 'collections' | 'timeline' | 'map' | 'stories' | 'ai' | 'about'
+import { GalleryTab, isGalleryTab } from '../components/museum/galleryTabs'
+import { BookOpen, Clock, MapPin, Scroll, Sparkles, Info, Landmark, Search, Bookmark, Keyboard } from 'lucide-react'
 
 interface TabDef {
   key: GalleryTab
@@ -32,17 +31,19 @@ interface TabDef {
 }
 
 const GALLERY_TABS: TabDef[] = [
-  { key: 'collections', label: 'Collections & Archive', shortLabel: 'Collections', icon: BookOpen, description: 'Browse manuscripts, artifacts, and heritage entries' },
-  { key: 'timeline', label: 'Civilizations Timeline', shortLabel: 'Timeline', icon: Clock, description: 'Explore African civilizations across the ages' },
-  { key: 'map', label: 'Regional Map', shortLabel: 'Map', icon: MapPin, description: 'Discover heritage by African region' },
-  { key: 'stories', label: 'Oral Histories', shortLabel: 'Stories', icon: Scroll, description: 'Philosophies, proverbs, and oral traditions' },
-  { key: 'ai', label: 'AI Curator', shortLabel: 'AI', icon: Sparkles, description: 'Get guided explorations from our AI curator' },
-  { key: 'about', label: 'About the Museum', shortLabel: 'About', icon: Info, description: 'Our mission and manifesto' },
+  { key: 'collections', label: 'Collections', shortLabel: 'Collections', icon: BookOpen, description: 'Manuscripts, sculpture, monuments and other objects from across the continent.' },
+  { key: 'timeline', label: 'Timeline', shortLabel: 'Timeline', icon: Clock, description: 'African states and civilizations through time, with the objects they left behind.' },
+  { key: 'map', label: 'Regions', shortLabel: 'Regions', icon: MapPin, description: 'Heritage by region, from the Nile valley to the Swahili coast.' },
+  { key: 'stories', label: 'Stories & proverbs', shortLabel: 'Stories', icon: Scroll, description: 'Philosophy, proverbs and oral traditions, in their own words.' },
+  { key: 'ai', label: 'Ask the curator', shortLabel: 'Curator', icon: Sparkles, description: 'Ask a question and get an answer drawn from the archive’s records.' },
+  { key: 'about', label: 'About', shortLabel: 'About', icon: Info, description: 'How the museum and the archive are put together.' },
 ]
 
+const REGION_KEYS: RegionFilter[] = ['west', 'east', 'north', 'southern', 'central']
+
 export default function MuseumExhibitionPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchOpen, setSearchOpen] = useState(false)
-  const [signInOpen, setSignInOpen] = useState(false)
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactItem | null>(null)
@@ -50,108 +51,168 @@ export default function MuseumExhibitionPage() {
   const [showDevDoc, setShowDevDoc] = useState(false)
   const [activeTab, setActiveTab] = useState<GalleryTab>('collections')
   const [showHero, setShowHero] = useState(true)
+  const [collectionsRegion, setCollectionsRegion] = useState<RegionFilter | undefined>(undefined)
 
   const { bookmarks, isBookmarked, toggleBookmark, removeBookmark, count: bookmarkCount } = useBookmarks()
 
-  // Smooth-scroll helper
-  const scrollToSection = useCallback((sectionId: string) => {
-    const el = document.getElementById(sectionId)
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
-  }, [])
+  const tabParam = searchParams.get('tab')
+  const artifactParam = searchParams.get('artifact')
+  const storyParam = searchParams.get('story')
 
-  // Handle "Explore" click from Hero — hide hero and show collections
-  const handleExploreFromHero = useCallback(() => {
-    setShowHero(false)
-    setActiveTab('collections')
-    // Scroll to top of gallery content
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+  const updateParams = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          mutate(next)
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
 
-  const handleDiscoverFromHero = useCallback(() => {
-    setShowHero(false)
-    setActiveTab('timeline')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
-  const handleTabChange = useCallback((tab: GalleryTab) => {
-    setActiveTab(tab)
-    setShowHero(false)
-    // Scroll to top of gallery content area
-    const galleryEl = document.getElementById('gallery-content')
-    if (galleryEl) {
-      galleryEl.scrollIntoView({ behavior: 'smooth' })
+  // Deep links: ?tab=, ?artifact=, ?story=
+  useEffect(() => {
+    if (isGalleryTab(tabParam)) {
+      setActiveTab(tabParam)
+      setShowHero(false)
     }
-  }, [])
+  }, [tabParam])
 
-  // Check if any modal is open
+  useEffect(() => {
+    if (!artifactParam) return
+    const artifact = ARTIFACTS_DATA.find((a) => a.id === artifactParam)
+    if (artifact) {
+      setSelectedArtifact(artifact)
+      setShowHero(false)
+    }
+  }, [artifactParam])
+
+  useEffect(() => {
+    if (!storyParam) return
+    const story = STORIES_DATA.find((s) => s.id === storyParam)
+    if (story) {
+      setSelectedStory(story)
+      setShowHero(false)
+    }
+  }, [storyParam])
+
+  const handleTabChange = useCallback(
+    (tab: GalleryTab) => {
+      setActiveTab(tab)
+      setShowHero(false)
+      setCollectionsRegion(undefined)
+      updateParams((p) => p.set('tab', tab))
+      const galleryEl = document.getElementById('gallery-content')
+      if (galleryEl) {
+        galleryEl.scrollIntoView({ behavior: 'smooth' })
+      }
+    },
+    [updateParams],
+  )
+
+  const handleExploreFromHero = useCallback(() => {
+    handleTabChange('collections')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [handleTabChange])
+
+  const handleRegionFromHero = useCallback(() => {
+    handleTabChange('map')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [handleTabChange])
+
+  const handleExploreRegion = useCallback(
+    (regionKey: string) => {
+      handleTabChange('collections')
+      const region = REGION_KEYS.find((r) => r === regionKey)
+      setCollectionsRegion(region)
+    },
+    [handleTabChange],
+  )
+
+  const handleShowIntro = () => {
+    setShowHero(true)
+    updateParams((p) => p.delete('tab'))
+  }
+
+  const closeArtifact = useCallback(() => {
+    setSelectedArtifact(null)
+    if (artifactParam) updateParams((p) => p.delete('artifact'))
+  }, [artifactParam, updateParams])
+
+  const closeStory = useCallback(() => {
+    setSelectedStory(null)
+    if (storyParam) updateParams((p) => p.delete('story'))
+  }, [storyParam, updateParams])
+
+  const closeSearch = useCallback(() => setSearchOpen(false), [])
+  const closeBookmarks = useCallback(() => setBookmarksOpen(false), [])
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+
   const isAnyModalOpen =
     searchOpen ||
-    signInOpen ||
     bookmarksOpen ||
     shortcutsOpen ||
     !!selectedArtifact ||
     !!selectedStory
 
   useEffect(() => {
-    // Dev doc — URL param or Shift+D
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('dev') === 'true') {
-      setShowDevDoc(true)
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
-      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select'
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      const isEditable =
+        tag === 'input' || tag === 'textarea' || tag === 'select' || !!target?.isContentEditable
+      const modalOpen =
+        isAnyModalOpen || hasOpenModal() || !!document.querySelector('[role="dialog"]')
 
-      // Shift+D — dev token doc
-      if (e.shiftKey && e.key.toLowerCase() === 'd') {
+      // Ctrl/Cmd + K works everywhere, including inside text fields
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        if (!modalOpen) setSearchOpen(true)
+        return
+      }
+
+      if (isEditable) return
+
+      if (import.meta.env.DEV && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'd') {
         setShowDevDoc((prev) => !prev)
         return
       }
 
-      // Skip all other shortcuts if user is typing in an input
-      if (isEditable) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
 
-      // ? — Keyboard Shortcuts Modal
       if (e.key === '?') {
         e.preventDefault()
-        setShortcutsOpen((prev) => !prev)
+        if (shortcutsOpen) setShortcutsOpen(false)
+        else if (!modalOpen) setShortcutsOpen(true)
         return
       }
 
-      // Ctrl/Cmd + K — Global Search
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        if (!isAnyModalOpen) setSearchOpen(true)
+      if (e.key.toLowerCase() === 'b') {
+        if (!modalOpen) setBookmarksOpen(true)
         return
       }
 
-      // B — Bookmarks Drawer
-      if (e.key.toLowerCase() === 'b' && !isAnyModalOpen) {
-        setBookmarksOpen(true)
-        return
-      }
-
-      // Number keys 1-6 — switch tabs (when gallery is visible)
-      if (!showHero && !isAnyModalOpen) {
-        const num = parseInt(e.key)
-        if (num >= 1 && num <= GALLERY_TABS.length) {
+      if (!showHero && !modalOpen && /^[1-9]$/.test(e.key)) {
+        const num = Number(e.key)
+        if (num <= GALLERY_TABS.length) {
           handleTabChange(GALLERY_TABS[num - 1].key)
-          return
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isAnyModalOpen, showHero, handleTabChange])
+  }, [isAnyModalOpen, shortcutsOpen, showHero, handleTabChange])
 
-  // Render the active gallery section content
   const renderActiveSection = () => {
     switch (activeTab) {
       case 'collections':
         return (
           <ArchiveExplorer
+            initialRegion={collectionsRegion}
             onInspectArtifact={(artifact) => setSelectedArtifact(artifact)}
             isBookmarked={isBookmarked}
             onToggleBookmark={(art) =>
@@ -162,6 +223,7 @@ export default function MuseumExhibitionPage() {
                 subtitle: art.subtitle,
                 catalogOrCategory: art.catalogNumber,
                 savedAt: new Date().toISOString(),
+                href: art.recordSlug ? `/article/${art.recordSlug}` : `/museum?artifact=${art.id}`,
               })
             }
           />
@@ -173,7 +235,7 @@ export default function MuseumExhibitionPage() {
           />
         )
       case 'map':
-        return <AfricaMapSection />
+        return <AfricaMapSection onExploreRegion={handleExploreRegion} />
       case 'stories':
         return (
           <StoriesSection
@@ -187,6 +249,7 @@ export default function MuseumExhibitionPage() {
                 subtitle: st.subtitle,
                 catalogOrCategory: st.categoryLabel,
                 savedAt: new Date().toISOString(),
+                href: `/museum?story=${st.id}`,
               })
             }
           />
@@ -207,151 +270,117 @@ export default function MuseumExhibitionPage() {
   const activeTabDef = GALLERY_TABS.find((t) => t.key === activeTab)!
 
   return (
-    <div className="min-h-screen bg-sand-50 dark:bg-dark-bg text-gray-900 dark:text-ivory-100 font-sans transition-colors relative">
-      {/* Skip to Main Content (Accessibility) */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-4 focus:py-2 focus:bg-bronze-400 focus:text-charcoal-950 focus:font-sans focus:font-semibold focus:text-sm focus:rounded-sm focus:shadow-lg focus:outline-none"
-      >
-        Skip to Main Content
-      </a>
+    // The museum is a dark "gallery wing" of the site: same navbar, type and components,
+    // with the dark palette forced on so it reads as an exhibition space.
+    <div className="dark">
+    <div className="min-h-screen bg-dark-bg text-ivory-100 font-sans relative">
+      <div className="sticky top-16 md:top-18 z-30 bg-charcoal-900/95 backdrop-blur-md border-b border-white/10">
+        <div className="container-app flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleShowIntro}
+            className={`hidden md:inline-flex items-center gap-2 pr-4 mr-1 border-r border-white/10 font-serif font-bold text-lg whitespace-nowrap transition-colors ${showHero ? 'text-accent-300' : 'text-ivory-100 hover:text-accent-300'}`}
+          >
+            <Landmark className="w-4 h-4" aria-hidden="true" /> Virtual Museum
+          </button>
+          <nav aria-label="Museum galleries" className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar py-2.5">
+            {GALLERY_TABS.map((tab) => {
+              const Icon = tab.icon
+              const isActive = !showHero && activeTab === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key)}
+                  type="button"
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-2 whitespace-nowrap px-3.5 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
+                    isActive ? 'bg-white/10 text-white' : 'text-ivory-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-accent-300' : ''}`} aria-hidden="true" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </nav>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search the museum (Ctrl+K)" className="p-2 rounded-lg text-ivory-300 hover:text-white hover:bg-white/10">
+              <Search className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={() => setBookmarksOpen(true)} aria-label={`Saved items (${bookmarkCount})`} className="relative p-2 rounded-lg text-ivory-300 hover:text-white hover:bg-white/10">
+              <Bookmark className="w-4 h-4" />
+              {bookmarkCount > 0 && (
+                <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-accent-400 text-charcoal-950 text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {bookmarkCount}
+                </span>
+              )}
+            </button>
+            <button type="button" onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts" className="hidden sm:inline-flex p-2 rounded-lg text-ivory-300 hover:text-white hover:bg-white/10">
+              <Keyboard className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Responsive Navigation Header */}
-      <Navbar
-        onSearchClick={() => setSearchOpen(true)}
-        onSignInClick={() => setSignInOpen(true)}
-        bookmarkCount={bookmarkCount}
-        onBookmarksClick={() => setBookmarksOpen(true)}
-      />
-
-      {/* Main Exhibition Sequence */}
-      <main id="main-content" tabIndex={-1} className="outline-none">
-        {/* Hero — shown on initial load, hidden after user starts exploring */}
+      <div id="main-content" className="outline-none">
         {showHero && (
           <Hero
             onExploreClick={handleExploreFromHero}
-            onDiscoverClick={handleDiscoverFromHero}
+            onRegionClick={handleRegionFromHero}
           />
         )}
 
-        {/* Gallery Navigation Tabs + Content — shown after hero is dismissed */}
         {!showHero && (
-          <div className="pt-20 sm:pt-24">
-            {/* Back to Hero / Exhibition Intro Button */}
-            <div className="container-app pt-4 pb-2">
-              <button
-                onClick={() => setShowHero(true)}
-                type="button"
-                className="inline-flex items-center space-x-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-accent-400 transition-colors font-mono text-xs uppercase tracking-wider"
-              >
-                <span>←</span>
-                <span>Exhibition Intro</span>
-              </button>
-            </div>
+          <div>
+            <header className="container-app pt-10 pb-8 border-b border-white/10">
+              <p className="eyebrow mb-2"><activeTabDef.icon className="w-3.5 h-3.5" aria-hidden="true" /> Virtual Museum</p>
+              <h1 className="heading-xl text-white">{activeTabDef.label}</h1>
+              <p className="text-ivory-400 mt-2 max-w-2xl">{activeTabDef.description}</p>
+            </header>
 
-            {/* Tab Navigation Bar */}
-            <div className="sticky top-16 sm:top-[72px] z-30 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-sand-200 dark:border-dark-border transition-colors">
-              <div className="container-app">
-                <nav
-                  aria-label="Gallery Navigation"
-                  className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2.5"
-                >
-                  {GALLERY_TABS.map((tab) => {
-                    const Icon = tab.icon
-                    const isActive = activeTab === tab.key
-                    return (
-                      <button
-                        key={tab.key}
-                        onClick={() => handleTabChange(tab.key)}
-                        type="button"
-                        title={tab.description}
-                        className={`group relative flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-lg font-sans text-xs font-semibold tracking-wide transition-all duration-200 flex-shrink-0 ${
-                          isActive
-                            ? 'text-white bg-primary-600 dark:bg-primary-700 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-card'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-accent-300' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'}`} />
-                        <span className="hidden sm:inline">{tab.label}</span>
-                        <span className="sm:hidden">{tab.shortLabel}</span>
-                      </button>
-                    )
-                  })}
-                </nav>
-              </div>
-            </div>
-
-            {/* Active Tab Description Header */}
-            <div className="container-app py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-sand-200 dark:border-dark-border">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/30 flex items-center justify-center flex-shrink-0">
-                  <activeTabDef.icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="badge badge-primary">GALLERY EXHIBIT</span>
-                    <span className="text-xs text-gray-400 font-mono">Stage {GALLERY_TABS.findIndex((t) => t.key === activeTab) + 1} of {GALLERY_TABS.length}</span>
-                  </div>
-                  <h2 className="heading-lg text-gray-900 dark:text-white">{activeTabDef.label}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-sans mt-0.5">{activeTabDef.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-primary-500" />
-                <span className="badge badge-gray font-mono">
-                  EXHIBIT {GALLERY_TABS.findIndex((t) => t.key === activeTab) + 1} / {GALLERY_TABS.length}
-                </span>
-              </div>
-            </div>
-
-            {/* Gallery Content Area */}
-            <div id="gallery-content" className="min-h-[60vh]">
+            <div id="gallery-content" className="min-h-[60vh] scroll-mt-32">
               {renderActiveSection()}
             </div>
           </div>
         )}
 
-        {/* Developer-Only Design Tokens Panel */}
-        {showDevDoc && (
+        {import.meta.env.DEV && showDevDoc && (
           <div className="relative z-50">
-            <div className="text-center py-4 bg-bronze-900/80 border-y border-bronze-400/40 font-mono text-xs text-bronze-300">
-              Developer Token Inspector Active (Press Shift + D to hide)
+            <div className="text-center py-4 bg-charcoal-800 border-y border-white/10 font-mono text-xs text-accent-300">
+              Developer token inspector (Shift + D to hide)
             </div>
             <DesignTokensDoc />
           </div>
         )}
-      </main>
-
-      {/* Museum Exhibition Footer */}
-      <Footer onKeyboardShortcutsClick={() => setShortcutsOpen(true)} />
+      </div>
 
       {/* Interactive Exhibition Overlays */}
       <ArtifactDetailDrawer
         artifact={selectedArtifact}
         isOpen={!!selectedArtifact}
-        onClose={() => setSelectedArtifact(null)}
+        onClose={closeArtifact}
       />
       <StoryReaderModal
         story={selectedStory}
         isOpen={!!selectedStory}
-        onClose={() => setSelectedStory(null)}
+        onClose={closeStory}
       />
       <SearchModal
         isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
+        onClose={closeSearch}
         onInspectArtifact={(art) => setSelectedArtifact(art)}
         onReadStory={(st) => setSelectedStory(st)}
       />
       <BookmarksDrawer
         isOpen={bookmarksOpen}
-        onClose={() => setBookmarksOpen(false)}
+        onClose={closeBookmarks}
         bookmarks={bookmarks}
         onRemoveBookmark={(id) => removeBookmark(id)}
         onInspectArtifact={(art) => setSelectedArtifact(art)}
         onReadStory={(st) => setSelectedStory(st)}
       />
-      <SignInModal isOpen={signInOpen} onClose={() => setSignInOpen(false)} />
-      <ShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <ShortcutsModal isOpen={shortcutsOpen} onClose={closeShortcuts} />
+    </div>
     </div>
   )
 }

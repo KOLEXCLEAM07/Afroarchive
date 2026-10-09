@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react'
-import { X, Bookmark, Trash2, ArrowUpRight, BookOpen, Compass } from 'lucide-react'
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { X, Bookmark, Trash2, ArrowUpRight, Compass } from 'lucide-react'
 import { BookmarkEntry } from '../../hooks/useBookmarks'
+import { useModalStack } from '../../hooks/useScrollLock'
 import { ARTIFACTS_DATA } from '../../data/archiveData'
 import { STORIES_DATA } from '../../data/storyData'
 import { ArtifactItem } from '../../types/archiveTypes'
 import { StoryItem } from '../../types/storyTypes'
 import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
 
 export interface BookmarksDrawerProps {
   isOpen: boolean
@@ -17,6 +18,9 @@ export interface BookmarksDrawerProps {
   onReadStory: (story: StoryItem) => void
 }
 
+const openButtonClass =
+  'p-2 rounded-lg text-ivory-300 hover:text-accent-300 hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400'
+
 export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   isOpen,
   onClose,
@@ -25,56 +29,101 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onInspectArtifact,
   onReadStory,
 }) => {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'hidden'
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen, onClose])
+  const panelRef = useModalStack<HTMLDivElement>(isOpen, onClose)
 
   if (!isOpen) return null
+
+  const renderOpenAction = (b: BookmarkEntry) => {
+    const label = `Open ${b.title}`
+
+    if (b.type === 'artifact') {
+      const art = ARTIFACTS_DATA.find((a) => a.id === b.id)
+      if (art) {
+        return (
+          <button
+            onClick={() => {
+              onClose()
+              onInspectArtifact(art)
+            }}
+            type="button"
+            aria-label={label}
+            title="Open"
+            className={openButtonClass}
+          >
+            <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )
+      }
+    }
+
+    if (b.type === 'story') {
+      const st = STORIES_DATA.find((s) => s.id === b.id)
+      if (st) {
+        return (
+          <button
+            onClick={() => {
+              onClose()
+              onReadStory(st)
+            }}
+            type="button"
+            aria-label={label}
+            title="Open"
+            className={openButtonClass}
+          >
+            <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )
+      }
+    }
+
+    const href = b.href || (b.type === 'article' ? `/article/${b.id}` : null)
+    if (!href) return null
+
+    return (
+      <Link to={href} onClick={onClose} aria-label={label} title="Open" className={openButtonClass}>
+        <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+      </Link>
+    )
+  }
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Saved Heritage Items"
-      className="fixed inset-0 z-50 bg-charcoal-950/90 backdrop-blur-md flex justify-end animate-fade-in"
+      aria-labelledby="bookmarks-drawer-title"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end animate-fade-in"
     >
       {/* Backdrop overlay click listener */}
       <div className="absolute inset-0 cursor-pointer" onClick={onClose} aria-hidden="true" />
 
       {/* Slide-over Drawer Container */}
-      <div className="relative w-full max-w-md bg-charcoal-900 border-l border-ivory-100/15 h-full overflow-y-auto shadow-museum z-10 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-dark-surface border border-white/10 rounded-l-2xl h-full overflow-y-auto shadow-2xl z-10 p-6 sm:p-8 flex flex-col justify-between space-y-6 outline-none"
+      >
         
         {/* Drawer Header */}
         <div className="space-y-4">
-          <div className="flex justify-between items-center border-b border-ivory-100/10 pb-4">
-            <div className="flex items-center space-x-3">
-              <Bookmark className="w-5 h-5 text-bronze-400 fill-bronze-400" />
-              <span className="font-mono text-2xs uppercase tracking-widest text-bronze-400">
-                SAVED HERITAGE COLLECTION ({bookmarks.length})
-              </span>
+          <div className="flex justify-between items-center border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <Bookmark className="w-5 h-5 text-accent-400 fill-accent-400" aria-hidden="true" />
+              <h2 id="bookmarks-drawer-title" className="heading-md text-white">
+                Saved items ({bookmarks.length})
+              </h2>
             </div>
             <button
               onClick={onClose}
               type="button"
               aria-label="Close saved items"
-              className="p-1.5 text-ivory-400 hover:text-bronze-300 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-bronze-400"
+              className="p-2 rounded-lg text-ivory-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
-          <p className="font-sans text-xs text-ivory-300 font-light leading-relaxed">
-            Your personal saved study list of manuscripts, artifacts, and philosophical texts (persisted locally).
+          <p className="text-sm text-ivory-400 leading-relaxed">
+            Manuscripts, objects, stories and articles you have saved. Saved items are kept in this browser.
           </p>
         </div>
 
@@ -84,66 +133,51 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
             bookmarks.map((b) => (
               <div
                 key={b.id}
-                className="group p-4 rounded bg-charcoal-850 border border-ivory-100/10 hover:border-bronze-400/40 transition-colors flex items-center justify-between gap-3"
+                className="group p-4 rounded-xl bg-dark-card border border-white/10 hover:border-accent-400/40 transition-colors flex items-center justify-between gap-3"
               >
                 <div className="space-y-1 flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Badge variant="bronze" size="sm">
-                      {b.type.toUpperCase()}
+                      {b.type}
                     </Badge>
-                    <span className="font-mono text-[10px] text-ivory-400 uppercase truncate">
+                    <span className="text-xs text-ivory-400 truncate">
                       {b.catalogOrCategory}
                     </span>
                   </div>
-                  <h4 className="font-display font-semibold text-sm text-ivory-100 group-hover:text-bronze-300 truncate">
+                  <h3 className="font-serif font-bold text-lg leading-snug text-white group-hover:text-accent-300 truncate">
                     {b.title}
-                  </h4>
+                  </h3>
                 </div>
 
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => {
-                      if (b.type === 'artifact') {
-                        const art = ARTIFACTS_DATA.find((a) => a.id === b.id)
-                        if (art) onInspectArtifact(art)
-                      } else {
-                        const st = STORIES_DATA.find((s) => s.id === b.id)
-                        if (st) onReadStory(st)
-                      }
-                      onClose()
-                    }}
-                    type="button"
-                    title="Inspect item"
-                    className="p-2 text-ivory-300 hover:text-bronze-300 rounded focus:outline-none"
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center gap-1">
+                  {renderOpenAction(b)}
 
                   <button
                     onClick={() => onRemoveBookmark(b.id)}
                     type="button"
-                    title="Remove from saved list"
-                    className="p-2 text-ivory-500 hover:text-red-400 rounded focus:outline-none"
+                    aria-label={`Remove ${b.title} from saved items`}
+                    title="Remove"
+                    className="p-2 rounded-lg text-ivory-500 hover:text-red-400 hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
             ))
           ) : (
             <div className="text-center py-16 space-y-3">
-              <Compass className="w-8 h-8 text-ivory-500 mx-auto" />
-              <h4 className="font-display text-base text-ivory-200">No Saved Items Yet</h4>
-              <p className="font-sans text-xs text-ivory-400">
-                Click the bookmark icon on any artifact card or philosophy story to save it to your personal collection.
+              <Compass className="w-8 h-8 text-ivory-500 mx-auto" aria-hidden="true" />
+              <h3 className="font-serif font-bold text-xl text-ivory-100">No saved items yet</h3>
+              <p className="text-sm text-ivory-400">
+                Use the bookmark icon on any object or story to save it here.
               </p>
             </div>
           )}
         </div>
 
         {/* Drawer Footer */}
-        <div className="pt-4 border-t border-ivory-100/10 text-center font-mono text-[10px] text-ivory-400">
-          <span>PRESERVE. DISCOVER. EMPOWER.</span>
+        <div className="pt-4 border-t border-white/10 text-center text-xs text-ivory-500">
+          <span>Press <kbd className="rounded-md border border-white/15 bg-white/5 px-1.5 font-mono text-xs text-ivory-300">Esc</kbd> to close</span>
         </div>
       </div>
     </div>

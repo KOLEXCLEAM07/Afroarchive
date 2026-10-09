@@ -1,298 +1,241 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
-import {
-  Search, Filter, X, SlidersHorizontal, TrendingUp,
-  Clock, Star, Loader2, ChevronDown, BookOpen, Sparkles,
-  MapPin, Globe2, Compass, Layers
-} from 'lucide-react'
+import { Search, X, SlidersHorizontal, TrendingUp, Clock, Star } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { ilikeAny } from '@/lib/query'
+import { KNOWLEDGE_SELECT, NOT_FLAGGED, knowledgeItemToArticle, type KnowledgeRecord } from '@/lib/knowledge'
+import { ARTICLE_LANGUAGES } from '@/lib/languages'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import ArticleCard from '@/components/articles/ArticleCard'
 import { FOUNDATIONAL_ARTICLES } from '@/data/articlesData'
-import type { Article, Category, SearchFilters } from '@/types'
+import type { Article, Category } from '@/types'
 
 const fadeUp: Variants = {
   hidden:  { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 }
+const stagger: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }
 
-const stagger: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-}
+type SortKey = 'newest' | 'most_liked' | 'most_viewed'
+type Kind = 'all' | 'articles' | 'records'
 
-const SORT_OPTIONS = [
-  { value: 'newest',     label: 'Newest First',    icon: <Clock className="w-3.5 h-3.5" /> },
-  { value: 'most_liked', label: 'Most Liked',       icon: <Star className="w-3.5 h-3.5" /> },
-  { value: 'most_viewed',label: 'Most Viewed',      icon: <TrendingUp className="w-3.5 h-3.5" /> },
+const SORT_OPTIONS: Array<{ value: SortKey; label: string; icon: JSX.Element }> = [
+  { value: 'newest',      label: 'Newest',      icon: <Clock className="w-3.5 h-3.5" /> },
+  { value: 'most_liked',  label: 'Most liked',  icon: <Star className="w-3.5 h-3.5" /> },
+  { value: 'most_viewed', label: 'Most viewed', icon: <TrendingUp className="w-3.5 h-3.5" /> },
 ]
 
-const QUICK_CATEGORIES = [
-  { label: 'All Catalog', slug: '' },
-  { label: 'Philosophy', slug: 'philosophy' },
-  { label: 'History & Kingdoms', slug: 'history' },
-  { label: 'Indigenous Science', slug: 'science' },
-  { label: 'Classical Arts', slug: 'arts' },
-  { label: 'Architecture', slug: 'architecture' },
-  { label: 'Oral Traditions', slug: 'languages' },
+const KINDS: Array<{ value: Kind; label: string }> = [
+  { value: 'all', label: 'Everything' },
+  { value: 'articles', label: 'Articles' },
+  { value: 'records', label: 'Archive records' },
+]
+
+// Used until the categories table has loaded (slugs match the database).
+const FALLBACK_CATEGORIES = [
+  { slug: 'history', name: 'History & Civilizations' },
+  { slug: 'philosophy', name: 'Philosophy & Thought' },
+  { slug: 'science', name: 'Science & Innovation' },
+  { slug: 'languages', name: 'Languages & Scripts' },
+  { slug: 'art-culture', name: 'Art & Culture' },
+  { slug: 'research', name: 'Scholarly Research' },
 ]
 
 const COUNTRIES = [
-  'All countries', 'Nigeria', 'Ghana', 'Egypt', 'Ethiopia', 'Kenya', 'South Africa',
+  'Nigeria', 'Ghana', 'Egypt', 'Ethiopia', 'Kenya', 'South Africa',
   'Mali', 'Senegal', 'Zimbabwe', 'Morocco', 'Tanzania', 'Uganda',
 ]
 
-const LANGUAGES = [
-  'All languages', 'English', 'French', 'Arabic', 'Swahili', 'Amharic', 'Hausa',
-  'Yoruba', 'Igbo', 'Portuguese',
-]
-
-const TIME_PERIODS = [
-  'All periods',
-  'Ancient (before 500 CE)',
-  'Medieval (500–1500 CE)',
-  'Early Modern (1500–1800)',
-  'Colonial Era (1800–1960)',
-  'Post-Independence (1960+)',
-  'Contemporary',
-]
+function sortArticles(list: Article[], sort: SortKey) {
+  const copy = [...list]
+  if (sort === 'most_liked') copy.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0))
+  else if (sort === 'most_viewed') copy.sort((a, b) => (b.views_count || 0) - (a.views_count || 0))
+  else copy.sort((a, b) => (b.published_at || '').localeCompare(a.published_at || ''))
+  return copy
+}
 
 export default function DiscoverPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [articles, setArticles] = useState<Article[]>([])
+  const query    = searchParams.get('q') || ''
+  const category = searchParams.get('category') || ''
+  const country  = searchParams.get('country') || ''
+  const sort     = (searchParams.get('sort') as SortKey) || 'newest'
+  const kind     = (searchParams.get('type') as Kind) || 'all'
+  const language = searchParams.get('lang') || ''
+
+  const [queryInput, setQueryInput] = useState(query)
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(false)
-  const [total, setTotal] = useState(0)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
-  const [filters, setFilters] = useState<SearchFilters>({
-    query:      searchParams.get('q') || '',
-    category:   searchParams.get('category') || '',
-    country:    searchParams.get('country') || '',
-    language:   searchParams.get('language') || '',
-    timePeriod: searchParams.get('period') || '',
-    sortBy:     (searchParams.get('sort') as SearchFilters['sortBy']) || 'newest',
-  })
+  useDocumentTitle('Discover')
 
-  // Load categories from Supabase (or fallback default categories)
+  const updateParam = (key: string, value: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (value) next.set(key, value)
+      else next.delete(key)
+      return next
+    }, { replace: true })
+  }
+
   useEffect(() => {
     supabase.from('categories').select('*').order('name')
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setCategories(data as Category[])
-        }
-      })
+      .then(({ data }) => { if (data?.length) setCategories(data as Category[]) })
   }, [])
 
-  // Sync state when URL query params change (e.g., from collections click)
+  // Keep the input in sync when the URL changes elsewhere (e.g. navbar search).
+  useEffect(() => { setQueryInput(query) }, [query])
+
+  // Debounce typing into the URL so we don't query on every keystroke.
   useEffect(() => {
-    const urlCategory = searchParams.get('category') || ''
-    const urlQuery = searchParams.get('q') || ''
-    setFilters(f => ({
-      ...f,
-      category: urlCategory,
-      query: urlQuery || f.query,
-    }))
-  }, [searchParams])
+    if (queryInput.trim() === query) return
+    const t = setTimeout(() => updateParam('q', queryInput.trim()), 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryInput])
 
-  // Fetch articles combining Supabase and Foundational Archives
-  const fetchArticles = useCallback(async () => {
-    setLoading(true)
+  const categoryOptions = useMemo(
+    () => (categories.length ? categories.map(c => ({ slug: c.slug, name: c.name })) : FALLBACK_CATEGORIES),
+    [categories]
+  )
+  const activeCategory = categories.find(c => c.slug === category)
+  const categoryLabel = categoryOptions.find(c => c.slug === category)?.name || category
 
-    try {
-      let query = supabase
-        .from('articles')
-        .select('*, author:profiles!articles_author_id_fkey(*), category:categories(*)', { count: 'exact' })
-        .eq('status', 'published')
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoading(true)
+      setLoadError(false)
+      const q = query.trim()
 
-      if (filters.query) {
-        query = query.or(`title.ilike.%${filters.query}%,excerpt.ilike.%${filters.query}%`)
+      // Community articles
+      let dbArticles: Article[] = []
+      const categoryUnknown = !!category && categories.length > 0 && !activeCategory
+      if (kind !== 'records' && !categoryUnknown) {
+        let req = supabase
+          .from('articles')
+          .select('*, author:profiles!articles_author_id_fkey(*), category:categories(*)')
+          .eq('status', 'published')
+          .limit(60)
+        if (q) req = req.or(ilikeAny(['title', 'excerpt'], q))
+        if (activeCategory) req = req.eq('category_id', activeCategory.id)
+        if (country) req = req.eq('country', country)
+        if (language) req = req.eq('language', language)
+        req = sort === 'most_liked' ? req.order('likes_count', { ascending: false })
+          : sort === 'most_viewed' ? req.order('views_count', { ascending: false })
+          : req.order('published_at', { ascending: false })
+        const { data, error } = await req
+        if (error) setLoadError(true)
+        dbArticles = (data as Article[]) ?? []
       }
-      if (filters.category) {
-        query = query.or(`category_id.eq.${filters.category},category_id.ilike.%${filters.category}%`)
-      }
-      if (filters.country && filters.country !== 'All countries') {
-        query = query.eq('country', filters.country)
-      }
 
-      switch (filters.sortBy) {
-        case 'most_liked':  query = query.order('likes_count', { ascending: false }); break
-        case 'most_viewed': query = query.order('views_count', { ascending: false }); break
-        default:            query = query.order('published_at', { ascending: false }); break
-      }
-
-      const { data, error } = await query
-      const dbArticles = (!error && data) ? (data as Article[]) : []
-
-      // Filter foundational articles locally based on active filters
-      let baseArticles = FOUNDATIONAL_ARTICLES.filter(art => {
-        if (filters.query) {
-          const q = filters.query.toLowerCase()
-          const matchTitle = art.title.toLowerCase().includes(q)
-          const matchExcerpt = art.excerpt?.toLowerCase().includes(q)
-          const matchAuthor = art.author?.full_name?.toLowerCase().includes(q) || art.author?.username.toLowerCase().includes(q)
-          if (!matchTitle && !matchExcerpt && !matchAuthor) return false
+      // Editorial essays bundled with the site
+      const editorial = kind === 'records' ? [] : FOUNDATIONAL_ARTICLES.filter(a => {
+        if (q) {
+          const needle = q.toLowerCase()
+          if (!a.title.toLowerCase().includes(needle) && !a.excerpt?.toLowerCase().includes(needle) && !a.content.toLowerCase().includes(needle)) return false
         }
-
-        if (filters.category) {
-          const cat = filters.category.toLowerCase()
-          const matchCat = art.category_id?.toLowerCase() === cat ||
-                           art.category?.slug.toLowerCase() === cat ||
-                           art.category?.name.toLowerCase().includes(cat)
-          if (!matchCat) return false
-        }
-
-        if (filters.country && filters.country !== 'All countries') {
-          if (art.country?.toLowerCase() !== filters.country.toLowerCase()) return false
-        }
-
-        if (filters.timePeriod && filters.timePeriod !== 'All periods') {
-          const p = filters.timePeriod.toLowerCase()
-          if (!art.time_period?.toLowerCase().includes(p)) return false
-        }
-
+        if (category && a.category?.slug !== category) return false
+        if (country && a.country?.toLowerCase() !== country.toLowerCase()) return false
+        if (language && a.language !== language) return false
         return true
       })
 
-      // Sort base articles
-      if (filters.sortBy === 'most_liked') {
-        baseArticles.sort((a, b) => b.likes_count - a.likes_count)
-      } else if (filters.sortBy === 'most_viewed') {
-        baseArticles.sort((a, b) => b.views_count - a.views_count)
+      // Ingested archive records (no category/country mapping yet)
+      let records: Article[] = []
+      if (kind !== 'articles' && !category && !country && !language) {
+        let req = supabase.from('knowledge_items').select(KNOWLEDGE_SELECT).or(NOT_FLAGGED)
+          .order('created_at', { ascending: false }).limit(q ? 30 : 12)
+        if (q) req = req.or(ilikeAny(['title', 'summary'], q))
+        const { data, error } = await req
+        if (error) setLoadError(true)
+        records = ((data ?? []) as unknown as KnowledgeRecord[]).map(knowledgeItemToArticle)
       }
 
-      // Merge and deduplicate by slug or id
+      if (cancelled) return
       const seen = new Set<string>()
-      const combined: Article[] = []
-
-      for (const item of [...dbArticles, ...baseArticles]) {
-        const key = item.slug || item.id
-        if (!seen.has(key)) {
-          seen.add(key)
-          combined.push(item)
-        }
-      }
-
+      const combined = [...sortArticles([...dbArticles, ...editorial], sort), ...records].filter(a => {
+        if (seen.has(a.slug)) return false
+        seen.add(a.slug)
+        return true
+      })
       setArticles(combined)
-      setTotal(combined.length)
-    } catch {
-      // quiet fallback
-      setArticles(FOUNDATIONAL_ARTICLES)
-      setTotal(FOUNDATIONAL_ARTICLES.length)
-    } finally {
       setLoading(false)
     }
-  }, [filters])
-
-  useEffect(() => {
-    fetchArticles()
-
-    // Sync filters to URL
-    const params: Record<string, string> = {}
-    if (filters.query)      params.q        = filters.query
-    if (filters.category)   params.category = filters.category
-    if (filters.country && filters.country !== 'All countries')    params.country  = filters.country
-    if (filters.language && filters.language !== 'All languages')   params.language = filters.language
-    if (filters.timePeriod && filters.timePeriod !== 'All periods') params.period   = filters.timePeriod
-    if (filters.sortBy !== 'newest') params.sort = filters.sortBy ?? ''
-    setSearchParams(params, { replace: true })
-  }, [filters, fetchArticles])
-
-  const updateFilter = (key: keyof SearchFilters, value: string) => {
-    setFilters(f => ({ ...f, [key]: value }))
-  }
+    run().catch(() => { if (!cancelled) { setLoadError(true); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [query, category, country, language, sort, kind, categories, activeCategory])
 
   const clearFilters = () => {
-    setFilters({ query: '', category: '', country: '', language: '', timePeriod: '', sortBy: 'newest' })
+    setQueryInput('')
+    setSearchParams({}, { replace: true })
   }
 
-  const hasActiveFilters = Boolean(
-    filters.category ||
-    (filters.country && filters.country !== 'All countries') ||
-    (filters.language && filters.language !== 'All languages') ||
-    (filters.timePeriod && filters.timePeriod !== 'All periods')
-  )
+  const activeFilterCount = [category, country, language].filter(Boolean).length
 
   return (
     <div className="min-h-screen bg-sand-50 dark:bg-dark-bg text-gray-900 dark:text-white transition-colors py-10">
       <div className="container-app">
-        {/* Header Section */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="badge badge-primary font-mono text-2xs tracking-widest uppercase">
-              PAN-AFRICAN ARCHIVAL ENGINE
-            </span>
-            <span className="text-xs text-gray-400 font-mono">
-              OPEN-ACCESS SCHOLARSHIP
-            </span>
-          </div>
-
+        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-8">
           <h1 className="heading-xl text-3xl sm:text-4xl lg:text-5xl text-gray-900 dark:text-white mb-3">
-            Explore African Knowledge
+            {activeCategory?.name || (category ? categoryLabel : 'Explore African Knowledge')}
           </h1>
           <p className="text-base text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-            Discover peer-reviewed scholarship, translations of ancient manuscripts, and historical essays spanning five millennia of African civilization.
+            {activeCategory?.description || 'Essays by contributors, editorial introductions and records gathered from open archives, all in one place.'}
           </p>
         </motion.div>
 
-        {/* Search Bar & Primary Actions */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="flex-1 relative">
+            <label htmlFor="discover-search" className="sr-only">Search the archive</label>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             <input
               id="discover-search"
-              type="text"
-              value={filters.query}
-              onChange={e => updateFilter('query', e.target.value)}
-              placeholder="Search manuscripts, philosophies, authors, empires..."
+              type="search"
+              value={queryInput}
+              onChange={e => setQueryInput(e.target.value)}
+              placeholder="Search people, places, kingdoms, ideas…"
               className="input-lg pl-12 bg-white dark:bg-dark-surface shadow-xs border-sand-300 dark:border-dark-border"
             />
-            {filters.query && (
-              <button
-                onClick={() => updateFilter('query', '')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1"
-                title="Clear Search"
-              >
+            {queryInput && (
+              <button type="button" onClick={() => { setQueryInput(''); updateParam('q', '') }} aria-label="Clear search"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-
           <button
-            id="discover-filter-btn"
+            type="button"
             onClick={() => setShowFilters(f => !f)}
+            aria-expanded={showFilters}
             className={cn(
               'btn btn-lg gap-2 border transition-all flex-shrink-0',
-              showFilters || hasActiveFilters
+              showFilters || activeFilterCount
                 ? 'btn-primary'
                 : 'btn-ghost border-sand-300 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-700 dark:text-gray-200'
             )}
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Filters</span>
-            {hasActiveFilters && (
-              <span className="badge bg-white/20 text-white text-2xs ml-1">
-                {[filters.category, filters.country, filters.language, filters.timePeriod].filter(v => v && !v.startsWith('All')).length}
-              </span>
-            )}
+            {activeFilterCount > 0 && <span className="badge bg-white/20 text-white text-2xs ml-1">{activeFilterCount}</span>}
           </button>
         </div>
 
-        {/* Quick Category Pill Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-6">
-          {QUICK_CATEGORIES.map(cat => {
-            const isActive = filters.category === cat.slug
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-6" role="group" aria-label="Category">
+          {[{ slug: '', name: 'All topics' }, ...categoryOptions].map(cat => {
+            const isActive = category === cat.slug
             return (
               <button
-                key={cat.slug}
-                onClick={() => updateFilter('category', cat.slug)}
+                key={cat.slug || 'all'}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => updateParam('category', cat.slug)}
                 className={cn(
                   'whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all border flex-shrink-0',
                   isActive
@@ -300,197 +243,115 @@ export default function DiscoverPage() {
                     : 'bg-white dark:bg-dark-surface text-gray-700 dark:text-gray-300 border-sand-200 dark:border-dark-border hover:border-primary-400'
                 )}
               >
-                {cat.label}
+                {cat.name}
               </button>
             )
           })}
         </div>
 
-        {/* Status Bar & Sort Selection */}
         <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-y border-sand-200 dark:border-dark-border mb-6 text-sm">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-            <span>{loading ? 'Searching archives...' : `${total} manuscripts & articles documented`}</span>
-            {filters.query && (
-              <span className="font-medium text-gray-800 dark:text-gray-200">
-                matching "{filters.query}"
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase text-gray-400 mr-1 hidden sm:inline">SORT:</span>
-            {SORT_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => updateFilter('sortBy', opt.value)}
-                className={cn(
-                  'btn btn-sm gap-1.5 transition-colors',
-                  filters.sortBy === opt.value
-                    ? 'btn-primary'
-                    : 'btn-ghost border border-sand-200 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-600 dark:text-gray-300'
-                )}
-              >
-                {opt.icon}
-                <span>{opt.label}</span>
-              </button>
-            ))}
+          <p className="text-gray-500 dark:text-gray-400" aria-live="polite">
+            {loading ? 'Searching…' : `${articles.length} result${articles.length === 1 ? '' : 's'}`}
+            {query && !loading && <span className="font-medium text-gray-800 dark:text-gray-200"> for “{query}”</span>}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1" role="group" aria-label="Content type">
+              {KINDS.map(k => (
+                <button key={k.value} type="button" aria-pressed={kind === k.value}
+                  onClick={() => updateParam('type', k.value === 'all' ? '' : k.value)}
+                  className={cn('btn btn-sm', kind === k.value ? 'btn-primary' : 'btn-ghost border border-sand-200 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-600 dark:text-gray-300')}>
+                  {k.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1" role="group" aria-label="Sort">
+              {SORT_OPTIONS.map(opt => (
+                <button key={opt.value} type="button" aria-pressed={sort === opt.value}
+                  onClick={() => updateParam('sort', opt.value === 'newest' ? '' : opt.value)}
+                  className={cn('btn btn-sm gap-1.5', sort === opt.value ? 'btn-primary' : 'btn-ghost border border-sand-200 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-600 dark:text-gray-300')}>
+                  {opt.icon}<span>{opt.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Active Filter Chips */}
-        {hasActiveFilters && (
+        {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
-            <span className="text-xs text-gray-400 font-mono">Active Filters:</span>
-            {filters.category && (
+            {category && (
               <span className="badge badge-primary gap-1 py-1">
-                Category: {filters.category}
-                <button onClick={() => updateFilter('category', '')} className="hover:text-white/80 ml-1">
-                  <X className="w-3 h-3" />
-                </button>
+                {categoryLabel}
+                <button type="button" onClick={() => updateParam('category', '')} aria-label="Remove category filter" className="ml-1"><X className="w-3 h-3" /></button>
               </span>
             )}
-            {filters.country && filters.country !== 'All countries' && (
+            {language && (
               <span className="badge badge-secondary gap-1 py-1">
-                Country: {filters.country}
-                <button onClick={() => updateFilter('country', '')} className="hover:text-white/80 ml-1">
-                  <X className="w-3 h-3" />
-                </button>
+                {ARTICLE_LANGUAGES.find(l => l.code === language)?.name ?? language}
+                <button type="button" onClick={() => updateParam('lang', '')} aria-label="Remove language filter" className="ml-1"><X className="w-3 h-3" /></button>
               </span>
             )}
-            {filters.timePeriod && filters.timePeriod !== 'All periods' && (
-              <span className="badge badge-gray gap-1 py-1">
-                Era: {filters.timePeriod}
-                <button onClick={() => updateFilter('timePeriod', '')} className="hover:text-gray-600 ml-1">
-                  <X className="w-3 h-3" />
-                </button>
+            {country && (
+              <span className="badge badge-secondary gap-1 py-1">
+                {country}
+                <button type="button" onClick={() => updateParam('country', '')} aria-label="Remove country filter" className="ml-1"><X className="w-3 h-3" /></button>
               </span>
             )}
-            <button
-              onClick={clearFilters}
-              className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium ml-2"
-            >
-              Clear All
-            </button>
+            <button type="button" onClick={clearFilters} className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium ml-2">Clear all</button>
           </div>
         )}
 
-        {/* Main Content Layout with Optional Sidebar */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Collapsible Filter Sidebar */}
           {showFilters && (
             <aside className="w-full lg:w-72 flex-shrink-0">
               <div className="card p-6 sticky top-24 space-y-6">
-                <div className="flex items-center justify-between pb-3 border-b border-sand-200 dark:border-dark-border">
-                  <h3 className="font-serif font-bold text-lg text-gray-900 dark:text-white">
-                    Filter Archive
-                  </h3>
-                  {hasActiveFilters && (
-                    <button
-                      onClick={clearFilters}
-                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-
-                {/* Country Filter */}
+                <h2 className="font-serif font-bold text-lg text-gray-900 dark:text-white pb-3 border-b border-sand-200 dark:border-dark-border">Filter</h2>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 font-mono">
-                    Country & Region
-                  </label>
-                  <select
-                    value={filters.country}
-                    onChange={e => updateFilter('country', e.target.value)}
-                    className="input text-sm bg-white dark:bg-dark-surface"
-                  >
-                    {COUNTRIES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                  <label htmlFor="discover-country" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Country</label>
+                  <select id="discover-country" value={country} onChange={e => updateParam('country', e.target.value)} className="input text-sm bg-white dark:bg-dark-surface">
+                    <option value="">All countries</option>
+                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-
-                {/* Language Filter */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 font-mono">
-                    Manuscript Language
-                  </label>
-                  <select
-                    value={filters.language}
-                    onChange={e => updateFilter('language', e.target.value)}
-                    className="input text-sm bg-white dark:bg-dark-surface"
-                  >
-                    {LANGUAGES.map(l => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
+                  <label htmlFor="discover-language" className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Written in</label>
+                  <select id="discover-language" value={language} onChange={e => updateParam('lang', e.target.value)} className="input text-sm bg-white dark:bg-dark-surface">
+                    <option value="">Any language</option>
+                    {ARTICLE_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                   </select>
                 </div>
-
-                {/* Time Period Filter */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 font-mono">
-                    Historical Era
-                  </label>
-                  <div className="space-y-1.5">
-                    {TIME_PERIODS.map(p => {
-                      const isActive = (filters.timePeriod === p) || (!filters.timePeriod && p === 'All periods')
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => updateFilter('timePeriod', p === 'All periods' ? '' : p)}
-                          className={cn(
-                            'w-full text-left rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                            isActive
-                              ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-300 font-bold'
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-sand-100 dark:hover:bg-dark-card'
-                          )}
-                        >
-                          {p}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+                <p className="text-xs text-gray-400">Country and language filters apply to articles. Archive records are hidden while they are on.</p>
               </div>
             </aside>
           )}
 
-          {/* Articles Grid */}
           <div className="flex-1 min-w-0">
+            {loadError && !loading && (
+              <p className="mb-4 text-sm text-amber-700 dark:text-amber-400">Some results could not be loaded. Showing what is available.</p>
+            )}
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="card p-5 space-y-4 animate-pulse">
                     <div className="h-44 bg-sand-200 dark:bg-dark-card rounded-2xl" />
                     <div className="h-4 bg-sand-200 dark:bg-dark-card rounded w-1/3" />
                     <div className="h-6 bg-sand-200 dark:bg-dark-card rounded w-3/4" />
-                    <div className="h-4 bg-sand-200 dark:bg-dark-card rounded w-full" />
                   </div>
                 ))}
               </div>
             ) : articles.length === 0 ? (
               <div className="text-center py-20 card p-8">
                 <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="heading-md text-gray-800 dark:text-gray-200 mb-2">
-                  No Archival Articles Found
-                </h3>
+                <h2 className="heading-md text-gray-800 dark:text-gray-200 mb-2">Nothing found</h2>
                 <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6 text-sm">
-                  We could not find any manuscripts matching your search terms or filter criteria. Try refining your keywords or clearing your active filters.
+                  Try a different spelling, a broader term, or clear the filters.
                 </p>
-                <button onClick={clearFilters} className="btn btn-primary btn-md">
-                  Reset Catalog Filters
-                </button>
+                <button type="button" onClick={clearFilters} className="btn btn-primary btn-md">Clear search and filters</button>
               </div>
             ) : (
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={stagger}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
+              <motion.div initial="hidden" animate="visible" variants={stagger} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {articles.map(article => (
                   <motion.div key={article.id} variants={fadeUp}>
-                    <ArticleCard article={article} variant="default" />
+                    <ArticleCard article={article} variant="default" className="h-full" />
                   </motion.div>
                 ))}
               </motion.div>

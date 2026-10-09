@@ -1,175 +1,236 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { Search, Filter, Compass, BookOpen, Layers, Database } from 'lucide-react'
+import { Search, Compass, Layers } from 'lucide-react'
 import { CategoryFilter, RegionFilter, ArtifactItem } from '../../types/archiveTypes'
 import { ARTIFACTS_DATA } from '../../data/archiveData'
 import { ArtifactCard } from './ArtifactCard'
-import { Badge } from '../ui/Badge'
 import { supabase } from '../../lib/supabase'
 
 export interface ArchiveExplorerProps {
   onInspectArtifact: (artifact: ArtifactItem) => void
   isBookmarked?: (id: string) => boolean
   onToggleBookmark?: (artifact: ArtifactItem) => void
+  initialRegion?: RegionFilter
+}
+
+type KnownRegion = Exclude<RegionFilter, 'all'>
+
+const REGION_BY_COUNTRY: Record<string, KnownRegion> = {}
+const REGION_COUNTRIES: Record<KnownRegion, string[]> = {
+  west: ['NG', 'GH', 'ML', 'SN', 'BF', 'NE', 'CI', 'GN', 'BJ', 'TG', 'SL', 'LR', 'GM', 'GW', 'MR', 'CV'],
+  east: ['ET', 'KE', 'TZ', 'UG', 'RW', 'BI', 'SO', 'ER', 'DJ', 'SS'],
+  north: ['EG', 'SD', 'LY', 'TN', 'DZ', 'MA'],
+  central: ['CD', 'CG', 'CM', 'CF', 'TD', 'GA', 'GQ', 'AO'],
+  southern: ['ZA', 'ZW', 'ZM', 'MW', 'MZ', 'BW', 'NA', 'LS', 'SZ', 'MG'],
+}
+for (const [region, codes] of Object.entries(REGION_COUNTRIES) as [KnownRegion, string[]][]) {
+  codes.forEach((code) => {
+    REGION_BY_COUNTRY[code] = region
+  })
+}
+
+const REGION_LABELS: Record<KnownRegion, string> = {
+  west: 'West Africa',
+  east: 'East Africa',
+  north: 'North Africa',
+  central: 'Central Africa',
+  southern: 'Southern Africa',
+}
+
+interface KnowledgeRow {
+  id: string
+  slug: string | null
+  title: string
+  summary: string | null
+  content: string | null
+  knowledge_type: string | null
+  country_codes: string[] | null
+  time_period: string | null
+  attribution: string | null
+  license_type: string | null
+  source_url: string | null
+  original_url: string | null
+  sources: { name: string | null; slug: string | null } | null
+  media: { file_url: string | null; thumbnail_url: string | null }[] | null
+}
+
+const looksLikeImage = (url: string) => {
+  try {
+    return /\.(jpe?g|png|webp|gif|svg)$/i.test(new URL(url).pathname)
+  } catch {
+    return false
+  }
+}
+
+const countryNameFor = (code: string) => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code
+  } catch {
+    return code
+  }
+}
+
+function mapKnowledgeRow(item: KnowledgeRow): ArtifactItem {
+  let cat: CategoryFilter = 'civilizations'
+  if (item.knowledge_type === 'manuscript') cat = 'manuscripts'
+  else if (item.knowledge_type === 'cultural_artifact') cat = 'arts'
+  else if (item.knowledge_type === 'place') cat = 'architecture'
+  else if (item.knowledge_type === 'work') cat = 'science'
+
+  const media = item.media?.[0]
+  const imageSrc =
+    media?.thumbnail_url ||
+    media?.file_url ||
+    (item.original_url && looksLikeImage(item.original_url) ? item.original_url : undefined)
+
+  const countryCode = item.country_codes?.[0]?.toUpperCase()
+  const region = countryCode ? REGION_BY_COUNTRY[countryCode] : undefined
+  const countryName = countryCode ? countryNameFor(countryCode) : undefined
+  const sourceName = item.sources?.name || undefined
+  const period = item.time_period || 'Date not recorded'
+  const sourceUrl = item.source_url || item.original_url
+
+  // Items without a known region use 'all' so they only appear under "All regions".
+  return {
+    id: item.id,
+    catalogNumber: sourceName ? sourceName.toUpperCase() : 'ARCHIVE RECORD',
+    title: item.title,
+    subtitle: sourceName ? `Source: ${sourceName}` : undefined,
+    category: cat,
+    region: region ?? 'all',
+    regionLabel: region ? REGION_LABELS[region] : countryName ? countryName : 'Region not recorded',
+    era: period,
+    dateRange: period,
+    originLocation: countryName || 'Location not recorded',
+    repository: sourceName || 'Source not recorded',
+    imageSrc: imageSrc || undefined,
+    summary: item.summary || item.title,
+    fullDescription: item.content || item.summary || item.title,
+    keyInsights: [
+      item.attribution ? `Attribution: ${item.attribution}` : null,
+      item.license_type ? `Licence: ${item.license_type}` : null,
+    ].filter((v): v is string => !!v),
+    primarySources: sourceUrl ? [sourceUrl] : [],
+    isFeatured: false,
+    recordSlug: item.slug || undefined,
+  }
 }
 
 export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
   onInspectArtifact,
   isBookmarked,
   onToggleBookmark,
+  initialRegion = 'all',
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all')
-  const [selectedRegion, setSelectedRegion] = useState<RegionFilter>('all')
+  const [selectedRegion, setSelectedRegion] = useState<RegionFilter>(initialRegion)
   const [searchQuery, setSearchQuery] = useState('')
   const [liveArtifacts, setLiveArtifacts] = useState<ArtifactItem[]>([])
-  const [isLiveActive, setIsLiveActive] = useState(false)
 
   useEffect(() => {
+    setSelectedRegion(initialRegion)
+  }, [initialRegion])
+
+  useEffect(() => {
+    let cancelled = false
     async function loadLiveArtifacts() {
       try {
         const { data, error } = await supabase
           .from('knowledge_items')
           .select('*, sources(name, slug), media(file_url, thumbnail_url)')
           .not('summary', 'is', null)
+          .or('verification_status.is.null,verification_status.neq.flagged')
           .order('created_at', { ascending: false })
           .limit(20)
 
-        if (!error && data && data.length > 0) {
-          const mapped: ArtifactItem[] = data.map((item: any) => {
-            let cat: CategoryFilter = 'civilizations'
-            if (item.knowledge_type === 'manuscript') cat = 'manuscripts'
-            else if (item.knowledge_type === 'cultural_artifact') cat = 'arts'
-            else if (item.knowledge_type === 'place') cat = 'architecture'
-            else if (item.knowledge_type === 'work') cat = 'science'
-
-            // Extract real image from media relation or original_url
-            const rawMedia =
-              item.media?.[0]?.thumbnail_url ||
-              item.media?.[0]?.file_url ||
-              item.original_url
-            let imgSrc = rawMedia ? rawMedia.split('?')[0] : ''
-
-            // High-resolution African heritage fallback if item has no direct media
-            if (
-              !imgSrc ||
-              (!imgSrc.includes('wikimedia.org') &&
-                !imgSrc.includes('unsplash.com') &&
-                !/\.(jpg|jpeg|png|webp|JPG|PNG|gif|svg)$/i.test(imgSrc))
-            ) {
-              imgSrc =
-                cat === 'manuscripts'
-                  ? 'https://upload.wikimedia.org/wikipedia/commons/3/39/Timbuktu-manuscripts-astronomy-tables.jpg'
-                  : cat === 'architecture'
-                  ? 'https://upload.wikimedia.org/wikipedia/commons/1/19/Great-Zimbabwe-6.jpg'
-                  : cat === 'arts'
-                  ? 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Benin_bronze_Louvre_A97-14-1.jpg'
-                  : 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80'
-            }
-
-            return {
-              id: item.id,
-              catalogNumber: `AFR-${item.id.slice(0, 6).toUpperCase()}`,
-              title: item.title,
-              subtitle: `Provenance: ${item.sources?.name || 'AfroArchive'}`,
-              category: cat,
-              region: 'west',
-              regionLabel: item.country_codes?.[0] ? `AFRICA (${item.country_codes[0]})` : 'AFRICA',
-              era: 'Verified Archive',
-              dateRange: 'Canonical Heritage',
-              originLocation: item.sources?.name || 'African Continent',
-              repository: item.sources?.name || 'AfroArchive Repository',
-              imageSrc: imgSrc,
-              summary: item.summary || item.title,
-              fullDescription: item.content || item.summary || item.title,
-              keyInsights: [
-                `Attribution: ${item.attribution || 'AfroArchive Registered'}`,
-                `License: ${item.license_type || 'Preserved'}`,
-              ],
-              primarySources: [item.source_url || 'https://afroarchive.org'],
-              isFeatured: true,
-            }
-          })
-          setLiveArtifacts(mapped)
-          setIsLiveActive(true)
+        if (!cancelled && !error && data && data.length > 0) {
+          setLiveArtifacts((data as unknown as KnowledgeRow[]).map(mapKnowledgeRow))
         }
       } catch (err) {
-        console.warn('Could not load live artifacts:', err)
+        console.warn('Could not load archive records:', err)
       }
     }
     loadLiveArtifacts()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
+  const combinedArtifacts = useMemo(() => [...liveArtifacts, ...ARTIFACTS_DATA], [liveArtifacts])
+
   const categories: { key: CategoryFilter; label: string }[] = [
-    { key: 'all', label: 'ALL COLLECTIONS' },
-    { key: 'manuscripts', label: 'MANUSCRIPTS' },
-    { key: 'civilizations', label: 'CIVILIZATIONS' },
-    { key: 'science', label: 'SCIENCE & ASTRONOMY' },
-    { key: 'architecture', label: 'ARCHITECTURE' },
-    { key: 'arts', label: 'ARTS & REGALIA' },
+    { key: 'all', label: 'All collections' },
+    { key: 'manuscripts', label: 'Manuscripts' },
+    { key: 'civilizations', label: 'Civilizations' },
+    { key: 'science', label: 'Science & astronomy' },
+    { key: 'architecture', label: 'Architecture' },
+    { key: 'arts', label: 'Arts & regalia' },
   ]
 
   const regions: { key: RegionFilter; label: string }[] = [
-    { key: 'all', label: 'ALL REGIONS' },
-    { key: 'west', label: 'WEST AFRICA' },
-    { key: 'east', label: 'EAST AFRICA' },
-    { key: 'north', label: 'NORTH AFRICA' },
-    { key: 'southern', label: 'SOUTHERN AFRICA' },
+    { key: 'all', label: 'All regions' },
+    { key: 'west', label: 'West Africa' },
+    { key: 'east', label: 'East Africa' },
+    { key: 'north', label: 'North Africa' },
+    { key: 'central', label: 'Central Africa' },
+    { key: 'southern', label: 'Southern Africa' },
   ]
 
-  // Filtered dataset evaluation combining live Supabase records + reference catalog
   const filteredArtifacts = useMemo(() => {
-    const combined = [...liveArtifacts, ...ARTIFACTS_DATA]
-    return combined.filter((item) => {
+    const q = searchQuery.trim().toLowerCase()
+    return combinedArtifacts.filter((item) => {
       const matchCategory = selectedCategory === 'all' || item.category === selectedCategory
       const matchRegion = selectedRegion === 'all' || item.region === selectedRegion
       const matchSearch =
-        searchQuery === '' ||
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.originLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.catalogNumber.toLowerCase().includes(searchQuery.toLowerCase())
+        q === '' ||
+        item.title.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q) ||
+        item.originLocation.toLowerCase().includes(q) ||
+        item.catalogNumber.toLowerCase().includes(q)
 
       return matchCategory && matchRegion && matchSearch
     })
-  }, [selectedCategory, selectedRegion, searchQuery, liveArtifacts])
+  }, [selectedCategory, selectedRegion, searchQuery, combinedArtifacts])
 
   return (
     <section
       id="archive"
       aria-label="Archive Explorer and Collections"
-      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors"
+      className="py-12 md:py-16 bg-dark-bg border-t border-white/10 text-ivory-100"
     >
       <div className="container-app space-y-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
           <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center space-x-3">
-              <span className="badge badge-primary">THE COLLECTION</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="eyebrow">The collection</span>
+              <span className="text-xs text-ivory-400">
                 A starting point for further reading
               </span>
             </div>
 
-            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
-              Browse the Collection
+            <h2 className="heading-xl text-white">
+              Browse the collection
             </h2>
 
-            <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
+            <p className="text-sm md:text-base text-ivory-300 leading-relaxed">
               Each entry is a short invitation: a manuscript, monument, work of art, or idea with context for your next step.
             </p>
           </div>
 
-          <div className="flex flex-col items-start md:items-end space-y-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono">
-            <div className="flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-primary-500" />
-              <span>{filteredArtifacts.length} of {ARTIFACTS_DATA.length} featured entries</span>
+          <div className="flex flex-col items-start md:items-end space-y-1.5 text-xs text-ivory-400">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-accent-400" aria-hidden="true" />
+              <span>Showing {filteredArtifacts.length} of {combinedArtifacts.length} entries</span>
             </div>
-            <span className="badge badge-primary">CURATED ARCHIVE</span>
+            {liveArtifacts.length > 0 && (
+              <span>Includes {liveArtifacts.length} recent records from open collections</span>
+            )}
           </div>
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="card p-6 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border space-y-6">
+        <div className="card rounded-2xl p-5 md:p-6 space-y-5">
           
           {/* Top Search & Filter Bar */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
@@ -180,15 +241,16 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Filter the collection"
                 placeholder="Filter by keyword, location, or catalog number..."
                 className="input pl-10 text-sm"
               />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-ivory-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Region Filter Pills */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">
+              <span className="text-xs font-semibold text-ivory-400 mr-1 hidden sm:inline">
                 Region:
               </span>
               {regions.map((reg) => (
@@ -196,10 +258,11 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
                   key={reg.key}
                   onClick={() => setSelectedRegion(reg.key)}
                   type="button"
-                  className={`badge transition-all cursor-pointer ${
+                  aria-pressed={selectedRegion === reg.key}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
                     selectedRegion === reg.key
-                      ? 'badge-primary font-bold'
-                      : 'badge-gray hover:border-primary-400/40'
+                      ? 'border-accent-400/50 bg-accent-400/15 text-accent-300'
+                      : 'border-white/10 bg-white/5 text-ivory-300 hover:border-white/25 hover:text-white'
                   }`}
                 >
                   {reg.label}
@@ -209,16 +272,16 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
           </div>
 
           {/* Category Tabs */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-2 border-t border-sand-200 dark:border-dark-border no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-4 border-t border-white/10 no-scrollbar">
             {categories.map((cat) => (
               <button
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key)}
                 type="button"
-                className={`font-sans text-xs font-medium uppercase tracking-wider px-3.5 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                className={`text-sm font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap transition-colors ${
                   selectedCategory === cat.key
-                    ? 'bg-primary-500 text-white font-semibold shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-dark-card'
+                    ? 'bg-white/10 text-white'
+                    : 'text-ivory-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {cat.label}
@@ -241,10 +304,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
             ))}
           </div>
         ) : (
-          <div className="card p-16 text-center space-y-4">
-            <Compass className="w-10 h-10 text-primary-400/60 mx-auto" />
-            <h3 className="heading-sm text-gray-900 dark:text-white">No Matching Archival Items Found</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+          <div className="card rounded-2xl p-12 md:p-16 text-center space-y-4">
+            <Compass className="w-10 h-10 text-accent-400/60 mx-auto" aria-hidden="true" />
+            <h3 className="font-serif font-bold text-2xl text-white">No matching items found</h3>
+            <p className="text-sm text-ivory-400 max-w-md mx-auto">
               Try adjusting your category tabs or clearing the search query filter.
             </p>
             <button
@@ -256,7 +319,7 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
               type="button"
               className="btn btn-primary btn-sm"
             >
-              Reset All Filters
+              Reset all filters
             </button>
           </div>
         )}

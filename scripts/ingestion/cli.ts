@@ -12,6 +12,7 @@ import {
   ZenodoImporter,
   OpenAfricaImporter,
   MasakhaneImporter,
+  CuratedImporter,
 } from './importers';
 
 const importersMap: Record<string, () => BaseImporter> = {
@@ -22,6 +23,7 @@ const importersMap: Record<string, () => BaseImporter> = {
   zenodo: () => new ZenodoImporter(),
   openafrica: () => new OpenAfricaImporter(),
   masakhane: () => new MasakhaneImporter(),
+  curated: () => new CuratedImporter(),
 };
 
 async function main() {

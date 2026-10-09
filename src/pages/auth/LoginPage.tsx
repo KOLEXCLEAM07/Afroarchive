@@ -1,12 +1,18 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BookOpen, Mail, Lock, Eye, EyeOff, AlertCircle, Globe } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { cn } from '@/lib/utils'
+import { friendlyAuthError } from '@/lib/authErrors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  useDocumentTitle('Sign in')
+  // Only allow in-app paths as a return destination.
+  const from = (location.state as { from?: string } | null)?.from
+  const returnTo = from && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/auth') ? from : '/'
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -21,9 +27,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signIn(email, password)
-      navigate('/')
+      navigate(returnTo, { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Invalid email or password')
+      setError(friendlyAuthError(err, 'Invalid email or password'))
     } finally {
       setLoading(false)
     }
@@ -35,12 +41,8 @@ export default function LoginPage() {
     try {
       await signInWithGoogle()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('not enabled') || msg.includes('validation_failed')) {
-        setError('Google sign-in is not enabled in your Supabase Dashboard yet. Please enable Google under Authentication -> Providers, or sign in below with your email and password.')
-      } else {
-        setError(msg || 'Google sign-in failed. Please try again.')
-      }
+      setError(friendlyAuthError(err, 'Google sign-in failed. Please try again.'))
+
     } finally {
       setGLoading(false)
     }
@@ -62,18 +64,10 @@ export default function LoginPage() {
             "Until the lion learns to write, every story will glorify the hunter."
           </blockquote>
           <cite className="text-white/60 text-sm">— African Proverb</cite>
-          <div className="mt-16 grid grid-cols-3 gap-6">
-            {[
-              ['12,400+', 'Articles'],
-              ['54', 'Countries'],
-              ['127+', 'Languages'],
-            ].map(([v, l]) => (
-              <div key={l} className="bg-white/10 rounded-2xl p-4 text-center">
-                <div className="text-2xl font-bold">{v}</div>
-                <div className="text-sm text-white/60">{l}</div>
-              </div>
-            ))}
-          </div>
+          <p className="mt-16 text-white/70 max-w-sm leading-relaxed">
+            Sign in to write articles, keep drafts, like essays and build collections for others to explore.
+          </p>
+
         </div>
       </div>
 
@@ -94,7 +88,7 @@ export default function LoginPage() {
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your AfroArchive account</p>
 
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm mb-6 animate-fade-in">
+              <div role="alert" className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm mb-6 animate-fade-in">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -125,6 +119,7 @@ export default function LoginPage() {
                   <input
                     id="login-email"
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -143,6 +138,7 @@ export default function LoginPage() {
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   <input
                     id="login-password"
+                    autoComplete="current-password"
                     type={showPwd ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}

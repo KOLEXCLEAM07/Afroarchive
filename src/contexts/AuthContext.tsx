@@ -39,8 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
-    if (data) setProfile(data as Profile)
+      .maybeSingle()
+    setProfile((data as Profile | null) ?? null)
   }, [])
 
   const refreshProfile = useCallback(async () => {
@@ -107,16 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: getRedirectUrl('/auth/callback'),
-        queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })
     if (error) throw error
   }
 
   const signOut = async () => {
+    // Clear local state even if the network call fails, so the user is never stuck signed in.
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
     setProfile(null)
+    if (error) console.error('[auth] sign out:', error.message)
   }
 
   const resetPassword = async (email: string) => {

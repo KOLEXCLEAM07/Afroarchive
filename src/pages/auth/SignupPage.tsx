@@ -3,10 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, Mail, Lock, Eye, EyeOff, User, AtSign, AlertCircle, Globe, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { friendlyAuthError } from '@/lib/authErrors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export default function SignupPage() {
   const { signUp, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
+  useDocumentTitle('Create an account')
 
   const [fullName,  setFullName]  = useState('')
   const [username,  setUsername]  = useState('')
@@ -33,10 +36,13 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!/^[a-z0-9_]{3,30}$/.test(username)) { setError('Username must be 3 to 30 characters: lowercase letters, numbers or underscores.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
-      await signUp(email, password, username, fullName)
+      const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('username', username)
+      if (count) { setError('That username is already taken. Please choose another.'); return }
+      await signUp(email.trim(), password, username, fullName.trim())
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         navigate('/')
@@ -44,12 +50,8 @@ export default function SignupPage() {
         setSuccess(true)
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed. Please try again.'
-      if (msg.toLowerCase().includes('confirmation email') || msg.toLowerCase().includes('rate limit')) {
-        setError('Supabase email limit reached. In your Supabase Dashboard, go to Authentication -> Providers -> Email and turn off "Confirm email" for instant sign-ups.')
-      } else {
-        setError(msg)
-      }
+      setError(friendlyAuthError(err, 'Registration failed. Please try again.'))
+
     } finally {
       setLoading(false)
     }
@@ -85,17 +87,16 @@ export default function SignupPage() {
             <span className="font-serif font-bold text-2xl">AfroArchive</span>
           </Link>
           <h2 className="font-serif text-3xl font-bold mb-4 leading-tight">
-            Join 45,000+ scholars preserving Africa's legacy
+            Help preserve and share Africa's knowledge
           </h2>
           <p className="text-white/70 leading-relaxed mb-10">
-            Read unlimited articles, write and publish your own research, build collections, and connect with a global community of African knowledge keepers.
+            Reading is always free. An account lets you write and publish, keep drafts, like articles and curate collections.
           </p>
           {[
-            'Access 12,400+ curated articles',
-            'Write and publish your research',
-            'AI-powered article tools',
-            'Connect with global scholars',
-            'Build personal collections',
+            'Write and publish articles with references',
+            'Save drafts and edit published work',
+            'Like and save articles to revisit',
+            'Curate public or private collections',
           ].map(benefit => (
             <div key={benefit} className="flex items-center gap-3 mb-3">
               <div className="w-5 h-5 rounded-full bg-primary-400/30 flex items-center justify-center flex-shrink-0">
@@ -115,14 +116,14 @@ export default function SignupPage() {
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Free forever. No credit card required.</p>
 
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm mb-5 animate-fade-in">
+              <div role="alert" className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm mb-5 animate-fade-in">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
               </div>
             )}
 
             <button
               id="signup-google-btn"
-              onClick={async () => { setGLoading(true); try { await signInWithGoogle() } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed') } finally { setGLoading(false) } }}
+              onClick={async () => { setGLoading(true); try { await signInWithGoogle() } catch (e: unknown) { setError(friendlyAuthError(e, 'Google sign-up failed. Please try again.')) } finally { setGLoading(false) } }}
               disabled={gLoading}
               className="w-full btn btn-ghost border border-sand-300 dark:border-dark-border btn-md mb-5 gap-2"
             >
@@ -158,7 +159,7 @@ export default function SignupPage() {
                 <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input pl-10" />
+                  <input id="signup-email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input pl-10" />
                 </div>
               </div>
 
@@ -166,8 +167,8 @@ export default function SignupPage() {
                 <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input id="signup-password" type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} className="input pl-10 pr-10" />
-                  <button type="button" onClick={() => setShowPwd(p => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Toggle password">
+                  <input id="signup-password" type={showPwd ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} className="input pl-10 pr-10" />
+                  <button type="button" onClick={() => setShowPwd(p => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label={showPwd ? 'Hide password' : 'Show password'}>
                     {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -186,10 +187,7 @@ export default function SignupPage() {
             </form>
 
             <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
-              By signing up, you agree to our{' '}
-              <Link to="/terms" className="text-primary-600 dark:text-primary-400 hover:underline">Terms</Link>{' '}
-              and{' '}
-              <Link to="/privacy" className="text-primary-600 dark:text-primary-400 hover:underline">Privacy Policy</Link>
+              Your username is public. Your email address is never shown to other users.
             </p>
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5 border-t border-sand-200 dark:border-dark-border pt-5">

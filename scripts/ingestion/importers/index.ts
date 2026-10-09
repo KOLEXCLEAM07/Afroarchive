@@ -9,3 +9,4 @@ export * from './wikimedia';
 export * from './zenodo';
 export * from './openafrica';
 export * from './masakhane';
+export * from './curated';

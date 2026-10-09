@@ -29,18 +29,20 @@ function loadEnv() {
 
 loadEnv();
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://gjtddtnonvyvvrwbscaq.supabase.co';
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+// Ingestion writes through privileged RPCs that are only executable by the
+// service role. Never fall back to the public anon key.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export class IngestionDatabase {
   public client: SupabaseClient;
 
   constructor() {
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL or Key missing in environment.');
+      throw new Error(
+        'SUPABASE_SERVICE_ROLE_KEY (and VITE_SUPABASE_URL) must be set in .env to run ingestion. ' +
+        'Do not prefix the service key with VITE_ — it must never reach the browser bundle.'
+      );
     }
     this.client = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false },

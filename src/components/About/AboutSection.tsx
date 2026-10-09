@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
-import { ShieldCheck, BookOpen, Globe, Award, Layers, Users, ArrowRight, Sparkles, FileText } from 'lucide-react'
-import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import { BookOpen, Globe, Layers, FileText } from 'lucide-react'
 import { ContributorModal } from './ContributorModal'
 
 export const AboutSection: React.FC = () => {
@@ -9,108 +7,121 @@ export const AboutSection: React.FC = () => {
 
   const pillars = [
     {
-      title: 'Oral & Written Parity',
+      title: 'Oral & Written Traditions',
       icon: BookOpen,
-      desc: 'Treating oral epics, Griot lineages, and Saharan manuscripts as equal primary sources of civilizational truth.',
+      desc: 'Oral epics, proverbs and griot traditions sit alongside manuscripts and inscriptions as sources worth reading closely.',
     },
     {
-      title: 'Primary Source Rigor',
-      icon: ShieldCheck,
-      desc: 'Every catalog entry is authenticated with verified archival citations, radiocarbon dates, and peer references.',
+      title: 'Sources Shown',
+      icon: FileText,
+      desc: 'Every gallery entry lists the books, articles or collections it draws on, so you can follow up and check.',
     },
     {
-      title: 'Decolonized Taxonomy',
+      title: 'Organised by Place & Theme',
       icon: Layers,
-      desc: 'Structuring African knowledge around indigenous cosmological, mathematical, and philosophical categories.',
+      desc: 'Entries are grouped by region, period and subject to make connections across the continent easier to see.',
     },
     {
-      title: 'Global Open Access',
+      title: 'Free to Read',
       icon: Globe,
-      desc: 'Ensuring universal free access for scholars, students, and descendants across the globe without paywalls.',
+      desc: 'Everything in the museum can be read without an account or a paywall.',
     },
   ]
 
-  const verificationTiers = [
-    { step: '01', title: 'Primary Source Audit', detail: 'Physical manuscript or archaeological record verification.' },
-    { step: '02', title: 'Lineage Authentication', detail: 'Oral tradition cross-referencing with recognized elders & Jelis.' },
-    { step: '03', title: 'Carbon & Geographic Mapping', detail: 'Radiocarbon dating & GIS cartographic coordinate mapping.' },
-    { step: '04', title: 'Open Access Indexing', detail: 'Permanent open-access digital archival publishing.' },
+  const howItWorks = [
+    {
+      step: '01',
+      title: 'Open collections',
+      detail: 'Archive records come from open collections such as Wikimedia Commons, Wikidata, OpenAlex, Zenodo, openAFRICA and Masakhane, and keep their original licence and attribution.',
+    },
+    {
+      step: '02',
+      title: 'Cited essays',
+      detail: 'The gallery essays summarise published scholarship and list their references.',
+    },
+    {
+      step: '03',
+      title: 'Member articles',
+      detail: 'Members can write articles with references. An article becomes public when its author publishes it.',
+    },
+    {
+      step: '04',
+      title: 'Corrections',
+      detail: 'Mistakes happen. If you spot one, report it and the entry will be checked and corrected.',
+    },
   ]
 
   return (
     <section
       id="about"
-      aria-label="About AfroArchive and Mission"
-      className="section bg-white dark:bg-dark-surface border-t border-sand-200 dark:border-dark-border text-gray-900 dark:text-ivory-100 transition-colors overflow-hidden"
+      aria-label="About AfroArchive"
+      className="py-12 md:py-16 bg-dark-surface border-t border-white/10 text-ivory-100 overflow-hidden"
     >
       <div className="container-app space-y-12">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-sand-200 dark:border-dark-border pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
           <div className="space-y-3 max-w-3xl">
-            <div className="flex items-center space-x-3">
-              <span className="badge badge-primary">DIGITAL MUSEUM MANIFESTO</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="eyebrow">About the museum</span>
+              <span className="text-xs text-ivory-400">
                 Preserve · Discover · Empower
               </span>
             </div>
 
-            <h2 className="heading-xl text-gray-900 dark:text-white tracking-tight">
-              Africa’s Knowledge, Preserved for the Future
+            <h2 className="heading-xl text-white">
+              Africa’s knowledge, preserved for the future
             </h2>
 
-            <p className="font-sans text-base md:text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-light">
-              AfroArchive was built to serve as an interactive digital museum and open-access archive for African history, philosophy, science, architecture, literature, and indigenous wisdom.
+            <p className="text-base md:text-lg text-ivory-300 leading-relaxed">
+              AfroArchive is a free digital museum and archive for African history, philosophy, science, architecture and literature. It is a growing collection, and it does not cover everything.
             </p>
-          </div>
-
-          <div className="badge badge-primary">
-            GLOBAL OPEN ACCESS
           </div>
         </div>
 
-        {/* 4 Foundational Pillars Grid */}
+        {/* Pillars Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {pillars.map((p) => {
             const IconComp = p.icon
             return (
-              <div key={p.title} className="card p-6 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border space-y-3 hover:border-primary-400/40 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-900/40 border border-primary-200 dark:border-primary-500/30 flex items-center justify-center text-primary-600 dark:text-primary-400">
-                  <IconComp className="w-5 h-5" />
+              <div key={p.title} className="card rounded-2xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-400/10 border border-accent-400/25 flex items-center justify-center text-accent-300">
+                  <IconComp className="w-5 h-5" aria-hidden="true" />
                 </div>
-                <h3 className="font-serif font-bold text-lg text-gray-900 dark:text-white">{p.title}</h3>
-                <p className="font-sans text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{p.desc}</p>
+                <h3 className="font-serif font-bold text-xl text-white">{p.title}</h3>
+                <p className="text-sm text-ivory-400 leading-relaxed">{p.desc}</p>
               </div>
             )
           })}
         </div>
 
-        {/* Peer-Verification Methodology Panel */}
-        <div className="card p-8 md:p-12 bg-sand-50 dark:bg-dark-card border border-sand-200 dark:border-dark-border space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-sand-200 dark:border-dark-border pb-6 gap-4">
+        {/* How the archive works */}
+        <div className="card rounded-2xl p-6 md:p-10 space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-6 gap-4">
             <div className="space-y-1">
-              <span className="badge badge-primary mb-1">
-                CURATORIAL STANDARD
+              <span className="eyebrow">
+                How it works
               </span>
-              <h3 className="heading-lg text-gray-900 dark:text-white">
-                4-Tier Peer-Verification Protocol
+              <h3 className="heading-lg text-white">
+                Where the content comes from
               </h3>
             </div>
             
             <button
               onClick={() => setContributorModalOpen(true)}
+              type="button"
               className="btn btn-primary btn-md"
             >
-              Submit Heritage Proposal
+              Contribute
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {verificationTiers.map((tier) => (
-              <div key={tier.step} className="p-5 rounded-xl bg-white dark:bg-dark-surface border border-sand-200 dark:border-dark-border space-y-2">
-                <span className="text-xs font-mono font-bold text-primary-600 dark:text-accent-400">{tier.step}.</span>
-                <h4 className="font-serif text-sm font-semibold text-gray-900 dark:text-white">{tier.title}</h4>
-                <p className="font-sans text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{tier.detail}</p>
+            {howItWorks.map((item) => (
+              <div key={item.step} className="p-5 rounded-2xl bg-dark-surface border border-white/10 space-y-2">
+                <span className="text-sm font-semibold text-accent-300">{item.step}</span>
+                <h4 className="font-serif text-lg font-bold text-white">{item.title}</h4>
+                <p className="text-sm text-ivory-400 leading-relaxed">{item.detail}</p>
               </div>
             ))}
           </div>

@@ -1,24 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  Search, Menu, X, Sun, Moon, Bell, BookOpen,
-  User, LogOut, Settings, ChevronDown, Feather, Shield,
+  Search, Menu, X, Sun, Moon, BookOpen,
+  User, LogOut, Settings, ChevronDown, Feather, Landmark, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn, getAvatarFallback, getAvatarColor } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
-import type { Notification } from '@/types'
 
 const NAV_LINKS = [
   { to: '/',            label: 'Home'        },
-  { to: '/discover',    label: 'Explore'     },
+  { to: '/discover',    label: 'Discover'    },
+  { to: '/explore',     label: 'People & Places' },
+  { to: '/atlas',       label: 'Atlas'       },
   { to: '/collections', label: 'Collections' },
-  { to: '/museum',      label: 'Museum'      },
+  { to: '/about',       label: 'About'       },
 ]
 
 export default function Navbar() {
-  const { user, profile, signOut, isAdmin } = useAuth()
+  const { user, profile, signOut, isModerator } = useAuth()
   const { isDark, toggleTheme }              = useTheme()
   const navigate                             = useNavigate()
   const location                             = useLocation()
@@ -28,7 +28,6 @@ export default function Navbar() {
   const [searchOpen,    setSearchOpen]    = useState(false)
   const [searchQuery,   setSearchQuery]   = useState('')
   const [scrolled,      setScrolled]      = useState(false)
-  const [unreadCount,   setUnreadCount]   = useState(0)
 
   const searchRef  = useRef<HTMLInputElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -72,16 +71,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Fetch unread notification count
-  useEffect(() => {
-    if (!user) return
-    supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false)
-      .then(({ count }) => setUnreadCount(count ?? 0))
-  }, [user])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,7 +120,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map(({ to, label }) => (
                 <NavLink
                   key={to}
@@ -150,15 +139,21 @@ export default function Navbar() {
                 </NavLink>
               ))}
 
-              <Link
+              <NavLink
                 to="/museum"
-                className="ml-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase text-amber-300 bg-amber-500/15 border border-amber-500/35 hover:bg-amber-500/25 hover:border-amber-400 shadow-sm transition-all group"
                 id="navbar-virtual-museum-btn"
-                title="Enter 8-Stage Interactive Digital Museum"
+                className={({ isActive }) => cn(
+                  'ml-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors',
+                  isActive
+                    ? 'bg-accent-400 text-charcoal-950 border-accent-400'
+                    : scrolled || !isHome
+                      ? 'text-accent-700 border-accent-500/40 bg-accent-500/10 hover:bg-accent-500/20 dark:text-accent-300 dark:border-accent-400/40'
+                      : 'text-accent-300 border-accent-300/50 bg-white/5 hover:bg-white/10'
+                )}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse group-hover:scale-125 transition-transform" />
-                <span>🏛️ Virtual Museum</span>
-              </Link>
+                <Landmark className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Virtual Museum</span>
+              </NavLink>
             </div>
 
             {/* Right Actions */}
@@ -179,20 +174,22 @@ export default function Navbar() {
                 <Search className="w-5 h-5" />
               </button>
 
-              {/* Theme Toggle */}
-              <button
-                id="navbar-theme-btn"
-                onClick={toggleTheme}
-                className={cn(
-                  'p-2 rounded-xl transition-all duration-150',
-                  scrolled || !isHome
-                    ? 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card'
-                    : 'text-white/90 hover:bg-white/10'
-                )}
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
+              {/* Theme toggle (the museum is always dark, so it is hidden there) */}
+              {!location.pathname.startsWith('/museum') && (
+                <button
+                  id="navbar-theme-btn"
+                  onClick={toggleTheme}
+                  className={cn(
+                    'p-2 rounded-xl transition-all duration-150',
+                    scrolled || !isHome
+                      ? 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card'
+                      : 'text-white/90 hover:bg-white/10'
+                  )}
+                  aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                >
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+              )}
 
               {user ? (
                 <>
@@ -206,19 +203,6 @@ export default function Navbar() {
                     Write
                   </Link>
 
-                  {/* Notifications */}
-                  <Link
-                    to="/notifications"
-                    className="relative p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card transition-all"
-                    aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
-                  >
-                    <Bell className="w-5 h-5" />
-                    {unreadCount > 0 && (
-                      <span className="notification-dot" aria-hidden="true">
-                        {unreadCount > 9 ? '' : ''}
-                      </span>
-                    )}
-                  </Link>
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={profileRef}>
@@ -259,8 +243,8 @@ export default function Navbar() {
                         <ProfileMenuItem to={profile?.username ? `/profile/${profile.username}` : '/profile'} icon={<User className="w-4 h-4" />} label="My Profile" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/write"    icon={<Feather className="w-4 h-4" />} label="Write Article" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings"      onClick={() => setProfileOpen(false)} />
-                        {isAdmin && (
-                          <ProfileMenuItem to="/admin" icon={<Shield className="w-4 h-4" />} label="Admin Panel" onClick={() => setProfileOpen(false)} />
+                        {isModerator && (
+                          <ProfileMenuItem to="/moderation" icon={<ShieldCheck className="w-4 h-4" />} label="Moderation" onClick={() => setProfileOpen(false)} />
                         )}
                         <div className="border-t border-sand-200 dark:border-dark-border mt-1 pt-1">
                           <button
@@ -304,7 +288,7 @@ export default function Navbar() {
               <button
                 id="navbar-mobile-menu-btn"
                 onClick={() => setMenuOpen(m => !m)}
-                className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card transition-all"
+                className="lg:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card transition-all"
                 aria-label="Toggle mobile menu"
                 aria-expanded={menuOpen}
               >
@@ -316,7 +300,7 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <div className="md:hidden bg-sand-50/98 dark:bg-charcoal-950/98 backdrop-blur-xl border-t border-b border-sand-200 dark:border-ivory-100/10 shadow-2xl animate-slide-down relative z-50">
+          <div className="lg:hidden bg-sand-50/98 dark:bg-charcoal-950/98 backdrop-blur-xl border-t border-b border-sand-200 dark:border-ivory-100/10 shadow-2xl animate-slide-down relative z-50">
             <div className="container-app py-4 space-y-1.5">
               {/* Virtual Museum Feature Link */}
               <Link
@@ -324,11 +308,11 @@ export default function Navbar() {
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 transition-all mb-2"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span>🏛️ Enter Virtual Museum Tour</span>
-                </div>
-                <span className="text-[10px] uppercase tracking-widest text-amber-400 font-mono">8 STAGES →</span>
+                <span className="flex items-center gap-2.5">
+                  <Landmark className="w-4 h-4" aria-hidden="true" />
+                  <span>Virtual Museum</span>
+                </span>
+                <span aria-hidden="true">→</span>
               </Link>
               {NAV_LINKS.map(({ to, label }) => (
                 <NavLink
@@ -398,7 +382,7 @@ export default function Navbar() {
       {/* Mobile Menu Backdrop */}
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-fade-in"
           onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />

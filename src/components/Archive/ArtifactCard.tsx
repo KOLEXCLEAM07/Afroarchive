@@ -1,7 +1,6 @@
 import React from 'react'
 import { ArrowUpRight, BookOpen, MapPin, Calendar, Bookmark } from 'lucide-react'
 import { ArtifactItem } from '../../types/archiveTypes'
-import { Badge } from '../ui/Badge'
 
 export interface ArtifactCardProps {
   artifact: ArtifactItem
@@ -22,9 +21,9 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
   const showImage = Boolean(artifact.imageSrc && !imageError)
 
   return (
-    <article className="card-hover flex flex-col justify-between overflow-hidden group">
+    <article className="card-hover rounded-2xl flex flex-col justify-between overflow-hidden group">
       {/* Top Visual Container */}
-      <div className="relative aspect-[4/3] w-full bg-sand-100 dark:bg-dark-bg overflow-hidden border-b border-sand-200 dark:border-dark-border">
+      <div className="relative aspect-[4/3] w-full bg-dark-card overflow-hidden border-b border-white/10">
         
         {/* Real Artifact Primary Image */}
         {showImage && (
@@ -35,7 +34,7 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
-            className={`absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-700 ease-out z-0 ${
+            className={`absolute inset-0 w-full h-full object-cover object-center group-hover:scale-[1.03] transition-all duration-700 ease-out z-0 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -43,18 +42,18 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
 
         {/* Background Gradient & Scrim for Text Contrast */}
         <div 
-          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-[1] pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-[1] pointer-events-none"
           aria-hidden="true"
         />
 
         {/* Thumbnail Graphic Visual */}
         <div className="relative w-full h-full p-4 flex flex-col justify-between select-none z-10">
           <div className="flex justify-between items-start">
-            <span className="badge badge-primary shadow-sm backdrop-blur-md">
+            <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 font-mono text-[11px] text-ivory-100 backdrop-blur-md max-w-[60%] truncate">
               {artifact.catalogNumber}
             </span>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               {onToggleBookmark && (
                 <button
                   onClick={(e) => {
@@ -63,7 +62,7 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
                   }}
                   type="button"
                   aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark artifact'}
-                  className={`p-1.5 rounded-lg bg-black/60 backdrop-blur-xs border transition-colors shadow-md ${
+                  className={`p-1.5 rounded-full bg-black/60 backdrop-blur-xs border transition-colors ${
                     isBookmarked
                       ? 'border-accent-400 text-accent-400 fill-accent-400'
                       : 'border-white/20 text-white/80 hover:text-white'
@@ -72,7 +71,7 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
                   <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-accent-400' : ''}`} />
                 </button>
               )}
-              <span className="badge badge-gray text-[10px] backdrop-blur-md shadow-md">
+              <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 text-[11px] font-medium text-ivory-100 backdrop-blur-md">
                 {artifact.regionLabel}
               </span>
             </div>
@@ -81,21 +80,21 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
           {/* Central Motif (shown when image is not present or loading/failed) */}
           {!showImage && (
             <div className="my-auto text-center py-2 z-10">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-full border border-primary-400/40 bg-primary-900/30 flex items-center justify-center text-primary-300 group-hover:scale-110 transition-transform duration-500">
-                <BookOpen className="w-5 h-5" />
+              <div className="w-12 h-12 mx-auto mb-2 rounded-full border border-accent-400/40 bg-dark-surface flex items-center justify-center text-accent-300">
+                <BookOpen className="w-5 h-5" aria-hidden="true" />
               </div>
-              <span className="font-serif italic text-xs text-white/90 line-clamp-1 px-2">
+              <span className="font-serif italic text-sm text-white/90 line-clamp-1 px-2">
                 "{artifact.title}"
               </span>
-              <span className="font-mono text-[9px] text-white/60 uppercase tracking-widest mt-1 block">
-                Archival Record
+              <span className="text-[11px] text-white/60 mt-1 block">
+                Archival record
               </span>
             </div>
           )}
 
-          <div className="flex justify-between items-end text-white/90 font-mono text-[10px] uppercase tracking-wider z-10 pt-2 border-t border-white/10 bg-black/60 -mx-4 -mb-4 px-4 py-2 backdrop-blur-xs">
+          <div className="flex justify-between items-end text-white/90 text-xs z-10 -mx-4 -mb-4 px-4 py-2.5">
             <span>{artifact.era}</span>
-            <span className="text-accent-300 font-semibold">{artifact.category}</span>
+            <span className="text-accent-300 font-semibold capitalize">{artifact.category}</span>
           </div>
         </div>
 
@@ -106,34 +105,34 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
       {/* Card Content Details */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
         <div className="space-y-2">
-          <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 font-mono text-xs">
-            <Calendar className="w-3.5 h-3.5 text-primary-500" />
+          <div className="flex items-center gap-2 text-ivory-400 text-xs">
+            <Calendar className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
             <span>{artifact.dateRange}</span>
           </div>
 
-          <h3 className="font-serif font-bold text-lg md:text-xl text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300 leading-snug">
+          <h3 className="font-serif font-bold text-lg md:text-xl text-white group-hover:text-accent-300 transition-colors duration-300 leading-snug">
             {artifact.title}
           </h3>
 
-          <p className="font-sans text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
+          <p className="text-sm text-ivory-400 leading-relaxed line-clamp-3">
             {artifact.summary}
           </p>
         </div>
 
         {/* Bottom Location & Inspect Action Button */}
-        <div className="pt-3 border-t border-sand-200 dark:border-dark-border flex items-center justify-between">
-          <div className="flex items-center space-x-1.5 text-gray-500 dark:text-gray-400 font-mono text-[11px] truncate max-w-[170px]">
-            <MapPin className="w-3 h-3 text-primary-500 flex-shrink-0" />
+        <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-ivory-400 text-xs truncate max-w-[170px]">
+            <MapPin className="w-3 h-3 text-accent-400 flex-shrink-0" aria-hidden="true" />
             <span className="truncate">{artifact.originLocation}</span>
           </div>
 
           <button
             onClick={() => onInspect(artifact)}
             type="button"
-            className="inline-flex items-center space-x-1 font-sans text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-accent-400 group-hover:underline transition-colors focus:outline-none p-1"
+            className="inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
           >
-            <span>PROVENANCE</span>
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
+            <span>Provenance</span>
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" aria-hidden="true" />
           </button>
         </div>
       </div>

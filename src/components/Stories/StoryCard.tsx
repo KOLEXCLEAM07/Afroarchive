@@ -1,7 +1,6 @@
 import React from 'react'
-import { Quote, ArrowUpRight, BookOpen, Clock, User, Bookmark } from 'lucide-react'
+import { Quote, ArrowUpRight, Clock, Bookmark } from 'lucide-react'
 import { StoryItem } from '../../types/storyTypes'
-import { Badge } from '../ui/Badge'
 
 export interface StoryCardProps {
   story: StoryItem
@@ -17,15 +16,15 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   onToggleBookmark,
 }) => {
   return (
-    <article className="card-hover flex flex-col justify-between p-6 md:p-8 overflow-hidden group">
+    <article className="card-hover rounded-2xl flex flex-col justify-between p-6 md:p-7 overflow-hidden group">
       <div className="space-y-4 relative z-10">
         {/* Card Header Labels */}
         <div className="flex items-center justify-between">
-          <span className="badge badge-primary">
+          <span className="badge badge-accent">
             {story.categoryLabel}
           </span>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             {onToggleBookmark && (
               <button
                 onClick={(e) => {
@@ -34,59 +33,59 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 }}
                 type="button"
                 aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark story'}
-                className={`p-1.5 rounded-lg bg-sand-100 dark:bg-dark-card border transition-colors ${
+                className={`p-1.5 rounded-full bg-white/5 border transition-colors ${
                   isBookmarked
-                    ? 'border-accent-400 text-accent-500 fill-accent-500'
-                    : 'border-sand-200 dark:border-dark-border text-gray-400 hover:text-primary-500'
+                    ? 'border-accent-400 text-accent-400'
+                    : 'border-white/10 text-ivory-400 hover:text-white hover:border-white/25'
                 }`}
               >
                 <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-accent-400' : ''}`} />
               </button>
             )}
             
-            <div className="flex items-center space-x-1 text-xs text-gray-400 font-mono">
-              <Clock className="w-3.5 h-3.5 text-primary-500" />
+            <div className="flex items-center gap-1 text-xs text-ivory-400">
+              <Clock className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
               <span>{story.readingTime}</span>
             </div>
           </div>
         </div>
 
         {/* Quote Highlight Box */}
-        <div className="p-4 rounded-xl bg-sand-50 dark:bg-dark-surface border-l-2 border-primary-500 space-y-1">
-          <Quote className="w-4 h-4 text-primary-600 dark:text-accent-400" />
-          <p className="font-serif italic text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
+        <div className="p-4 rounded-xl bg-dark-surface border-l-2 border-accent-400/70 space-y-1">
+          <Quote className="w-4 h-4 text-accent-400" aria-hidden="true" />
+          <p className="font-serif italic text-base text-ivory-200 line-clamp-2">
             "{story.quote}"
           </p>
         </div>
 
         {/* Title & Author/Thinker */}
         <div className="space-y-1">
-          <span className="text-xs font-mono text-primary-600 dark:text-accent-400 uppercase tracking-wider block">
+          <span className="text-xs text-accent-300 block">
             {story.thinkerOrGriot} · {story.era}
           </span>
-          <h3 className="font-serif font-bold text-xl text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+          <h3 className="font-serif font-bold text-xl text-white group-hover:text-accent-300 transition-colors">
             {story.title}
           </h3>
         </div>
 
-        <p className="font-sans text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
+        <p className="text-sm text-ivory-400 leading-relaxed line-clamp-3">
           {story.excerpt}
         </p>
       </div>
 
       {/* Footer Info & Action */}
-      <div className="pt-4 mt-6 border-t border-sand-200 dark:border-dark-border flex items-center justify-between relative z-10">
-        <span className="text-xs text-gray-400 font-mono uppercase tracking-wider">
+      <div className="pt-4 mt-6 border-t border-white/10 flex items-center justify-between gap-3 relative z-10">
+        <span className="text-xs text-ivory-400 truncate">
           {story.region}
         </span>
 
         <button
           onClick={() => onRead(story)}
           type="button"
-          className="inline-flex items-center space-x-1 font-sans text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-accent-400 group-hover:underline transition-colors focus:outline-none p-1"
+          className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
         >
-          <span>READ PHILOSOPHY</span>
-          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
+          <span>Read philosophy</span>
+          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" aria-hidden="true" />
         </button>
       </div>
     </article>

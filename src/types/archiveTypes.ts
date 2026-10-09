@@ -27,6 +27,8 @@ export interface ArtifactItem {
   keyInsights: string[]
   primarySources: string[]
   isFeatured?: boolean
+  /** Slug of the database record this item was loaded from; links to /article/<slug>. */
+  recordSlug?: string
 }
 
 export interface TimelineEra {

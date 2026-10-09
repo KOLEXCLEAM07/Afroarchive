@@ -7,6 +7,26 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { KolexMatch, KolexSearchParams } from './types';
 import { getEmbeddingProvider } from './embeddings';
 
+interface MatchRow {
+  chunk_id: string;
+  knowledge_item_id: string;
+  title: string;
+  slug?: string | null;
+  knowledge_type: KolexMatch['knowledgeType'];
+  chunk_content: string;
+  chunk_index?: number | null;
+  similarity: number;
+  attribution: KolexMatch['attribution'];
+  license_type?: KolexMatch['licenseType'] | null;
+  source_url: KolexMatch['sourceUrl'];
+  original_url?: KolexMatch['originalUrl'] | null;
+  source_slug?: KolexMatch['sourceSlug'];
+  source_name?: KolexMatch['sourceName'];
+  country_codes?: string[] | null;
+  doi?: KolexMatch['doi'];
+  metadata?: KolexMatch['metadata'] | null;
+}
+
 export class KolexSearchClient {
   private readonly client: SupabaseClient;
 
@@ -47,7 +67,7 @@ export class KolexSearchClient {
         throw new Error(`Kolex vector search failed: ${v1Error.message}`);
       }
 
-      return (v1Data || []).map((row: any) => ({
+      return ((v1Data || []) as MatchRow[]).map((row) => ({
         chunkId: row.chunk_id,
         knowledgeItemId: row.knowledge_item_id,
         title: row.title,
@@ -63,7 +83,7 @@ export class KolexSearchClient {
       }));
     }
 
-    return (data || []).map((row: any) => ({
+    return ((data || []) as MatchRow[]).map((row) => ({
       chunkId: row.chunk_id,
       knowledgeItemId: row.knowledge_item_id,
       title: row.title,

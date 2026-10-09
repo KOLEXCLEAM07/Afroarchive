@@ -69,7 +69,7 @@ export interface Article {
   comments_count: number
   bookmarks_count: number
   is_featured: boolean
-  references: string[]
+  references_list: string[] | null
   youtube_embed: string | null
   language: string
   country: string | null

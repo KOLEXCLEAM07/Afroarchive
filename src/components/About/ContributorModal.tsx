@@ -1,180 +1,111 @@
-import React, { useState, useEffect } from 'react'
-import { X, Send, BookOpen, ShieldCheck, User, Building, FileText, CheckCircle2 } from 'lucide-react'
-import { Badge } from '../ui/Badge'
-import { Button } from '../ui/Button'
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { X, Feather, UserPlus, FileText, BookOpen } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { useModalStack } from '../../hooks/useScrollLock'
 
 export interface ContributorModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
-export const ContributorModal: React.FC<ContributorModalProps> = ({ isOpen, onClose }) => {
-  const [contributorName, setContributorName] = useState('')
-  const [institution, setInstitution] = useState('')
-  const [title, setTitle] = useState('')
-  const [category, setCategory] = useState('manuscripts')
-  const [region, setRegion] = useState('west')
-  const [abstract, setAbstract] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+const linkButtonClass = 'btn btn-primary btn-md gap-2'
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'hidden'
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen, onClose])
+export const ContributorModal: React.FC<ContributorModalProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth()
+  const panelRef = useModalStack<HTMLDivElement>(isOpen, onClose)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      onClose()
-    }, 2000)
-  }
+  const steps = [
+    {
+      icon: UserPlus,
+      title: 'Create a free account',
+      detail: 'Members can write and publish articles on AfroArchive.',
+    },
+    {
+      icon: Feather,
+      title: 'Write your article',
+      detail: 'Explain your subject clearly and in your own words.',
+    },
+    {
+      icon: FileText,
+      title: 'Cite your sources',
+      detail: 'List the books, articles, archives or recordings you relied on so readers can check them.',
+    },
+    {
+      icon: BookOpen,
+      title: 'Publish',
+      detail: 'Your article becomes public once you publish it.',
+    },
+  ]
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Scholar Contributor Submission"
-      className="fixed inset-0 z-50 bg-charcoal-950/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 md:p-10 animate-fade-in"
+      aria-labelledby="contributor-modal-title"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 md:p-10 animate-fade-in"
     >
-      <div className="relative w-full max-w-2xl bg-charcoal-900 border border-ivory-100/15 rounded-lg shadow-museum overflow-hidden p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="absolute inset-0 cursor-pointer" onClick={onClose} aria-hidden="true" />
+
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-2xl bg-dark-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto outline-none"
+      >
         
         {/* Modal Header */}
-        <div className="flex justify-between items-center border-b border-ivory-100/10 pb-4">
+        <div className="flex justify-between items-center border-b border-white/10 pb-4">
           <div>
-            <span className="font-mono text-2xs uppercase tracking-widest text-bronze-400">
-              SCHOLARIAL SUBMISSION PORTAL
+            <span className="eyebrow">
+              Contribute
             </span>
-            <h3 className="font-display font-bold text-xl sm:text-2xl text-ivory-100 mt-0.5">
-              Submit Archival Proposal
+            <h3 id="contributor-modal-title" className="heading-md text-white mt-1">
+              Share what you know
             </h3>
           </div>
           <button
             onClick={onClose}
             type="button"
-            aria-label="Close modal"
-            className="p-1.5 text-ivory-400 hover:text-bronze-300 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-bronze-400"
+            aria-label="Close"
+            className="p-2 rounded-lg text-ivory-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {submitted ? (
-          <div className="text-center py-12 space-y-4">
-            <CheckCircle2 className="w-12 h-12 text-bronze-400 mx-auto animate-bounce" />
-            <h4 className="font-display font-bold text-xl text-ivory-100">Proposal Submitted to Curatorial Board</h4>
-            <p className="font-sans text-xs text-ivory-300 max-w-md mx-auto">
-              Thank you for contributing to AfroArchive. Our academic review board will cross-reference your primary sources within 5 business days.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-mono text-2xs uppercase tracking-wider text-ivory-300 mb-1.5">
-                  Contributor Name / Title
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={contributorName}
-                    onChange={(e) => setContributorName(e.target.value)}
-                    placeholder="Dr. Amara Nkosi / Griot Djeli"
-                    className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs px-4 py-3 pl-10 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none"
-                  />
-                  <User className="w-4 h-4 text-ivory-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <p className="text-sm text-ivory-300 leading-relaxed">
+          Anyone with an account can contribute to AfroArchive by writing an article with references.
+        </p>
+
+        <ol className="space-y-3">
+          {steps.map((step, idx) => {
+            const Icon = step.icon
+            return (
+              <li key={step.title} className="flex items-start gap-4 p-4 rounded-xl bg-dark-card border border-white/10">
+                <span className="text-sm font-semibold text-accent-300 mt-0.5">0{idx + 1}</span>
+                <Icon className="w-4 h-4 text-accent-400 mt-1 flex-shrink-0" aria-hidden="true" />
+                <div className="space-y-0.5">
+                  <h4 className="font-serif font-bold text-lg text-white">{step.title}</h4>
+                  <p className="text-sm text-ivory-400 leading-relaxed">{step.detail}</p>
                 </div>
-              </div>
+              </li>
+            )
+          })}
+        </ol>
 
-              <div>
-                <label className="block font-mono text-2xs uppercase tracking-wider text-ivory-300 mb-1.5">
-                  Institution / Heritage Lineage
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                    placeholder="University of Ibadan / Ahmed Baba Inst."
-                    className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs px-4 py-3 pl-10 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none"
-                  />
-                  <Building className="w-4 h-4 text-ivory-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block font-mono text-2xs uppercase tracking-wider text-ivory-300 mb-1.5">
-                  Proposal Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Ge’ez Astronomy Codex of Axum"
-                  className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs px-4 py-3 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-mono text-2xs uppercase tracking-wider text-ivory-300 mb-1.5">
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs px-3 py-3 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none"
-                >
-                  <option value="manuscripts">Manuscripts</option>
-                  <option value="civilizations">Civilizations</option>
-                  <option value="science">Science</option>
-                  <option value="architecture">Architecture</option>
-                  <option value="philosophy">Philosophy</option>
-                  <option value="arts">Arts</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-mono text-2xs uppercase tracking-wider text-ivory-300 mb-1.5">
-                Archival Abstract & Primary Sources
-              </label>
-              <textarea
-                rows={4}
-                required
-                value={abstract}
-                onChange={(e) => setAbstract(e.target.value)}
-                placeholder="Provide a concise summary of the manuscript folio, oral lineage, or artifact along with primary archival citations..."
-                className="w-full bg-charcoal-950 text-ivory-100 font-sans text-xs p-4 rounded border border-ivory-100/15 focus:border-bronze-400 focus:outline-none leading-relaxed"
-              />
-            </div>
-
-            <div className="pt-2 flex justify-between items-center border-t border-ivory-100/10">
-              <span className="font-mono text-[10px] text-ivory-400 uppercase">
-                PEER-VERIFIED OPEN ACCESS
-              </span>
-              <Button type="submit" variant="primary" size="md">
-                SUBMIT FOR REVIEW
-              </Button>
-            </div>
-          </form>
-        )}
+        <div className="pt-4 flex flex-col sm:flex-row sm:justify-end gap-3 border-t border-white/10">
+          {user ? (
+            <Link to="/write" onClick={onClose} className={linkButtonClass}>
+              Write an article
+            </Link>
+          ) : (
+            <Link to="/auth/signup" onClick={onClose} className={linkButtonClass}>
+              Create an account
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   )

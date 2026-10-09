@@ -3,14 +3,18 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import {
-  User, MapPin, Globe, Calendar, ShieldCheck, Feather, BookOpen,
-  Eye, Users, UserCheck, Edit3, Trash2, Plus, Check,
+  MapPin, Globe, Calendar, ShieldCheck, Feather, BookOpen,
+  Eye, Heart, Edit3, Trash2, Plus, Check,
   Camera, ExternalLink, Share2, Clock, AlertCircle, Loader2, Bookmark
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { useBookmarks } from '@/hooks/useBookmarks'
-import { cn, formatDate, formatNumber, getAvatarFallback, getAvatarColor, slugify, calculateReadingTime } from '@/lib/utils'
+import { useBookmarks, type BookmarkEntry } from '@/hooks/useBookmarks'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import ImageUpload from '@/components/ui/ImageUpload'
+import { ARTICLE_LANGUAGES } from '@/lib/languages'
+import { normalizeUrl } from '@/lib/query'
+import { cn, formatDate, formatNumber, getAvatarFallback, getAvatarColor, uniqueSlug, calculateReadingTime } from '@/lib/utils'
 import type { Profile, Article, Category } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -27,7 +31,7 @@ const stagger: Variants = {
 
 export default function ProfilePage() {
   const { username: routeUsername } = useParams<{ username?: string }>()
-  const { user, profile: authProfile, refreshProfile, signOut } = useAuth()
+  const { user, profile: authProfile, loading: authLoading, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { bookmarks, removeBookmark } = useBookmarks()
@@ -54,6 +58,7 @@ export default function ProfilePage() {
   const [writeContent, setWriteContent] = useState('')
   const [writeTimePeriod, setWriteTimePeriod] = useState('')
   const [writeCountry, setWriteCountry] = useState('')
+  const [writeLanguage, setWriteLanguage] = useState('en')
   const [writeReferences, setWriteReferences] = useState('')
   const [isSubmittingArticle, setIsSubmittingArticle] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
@@ -80,6 +85,8 @@ export default function ProfilePage() {
   }, [location.pathname, queryTab])
 
   useEffect(() => {
+    // Wait for the session to be restored before deciding the visitor is signed out.
+    if (authLoading) return
     async function loadProfile() {
       setLoadingProfile(true)
       try {
@@ -101,12 +108,14 @@ export default function ProfilePage() {
             const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
             if (data) { setProfile(data as Profile); setIsOwnProfile(true) }
           }
-        } else { navigate('/auth/login'); return }
+        } else { navigate('/auth/login', { replace: true, state: { from: location.pathname } }); return }
       } catch (err) { console.error('Error loading profile:', err) }
       finally { setLoadingProfile(false) }
     }
     loadProfile()
-  }, [routeUsername, user, authProfile, navigate])
+  }, [routeUsername, user, authProfile, authLoading, navigate, location.pathname])
+
+  useDocumentTitle(profile ? (profile.full_name || `@${profile.username}`) : null)
 
   useEffect(() => {
     if (profile && isOwnProfile) {
@@ -141,65 +150,104 @@ export default function ProfilePage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !profile) return
+
+    const username = editUsername.trim().toLowerCase()
+    if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+      toast.error('Username must be 3–30 characters: lowercase letters, numbers or underscores.')
+      return
+    }
+    if (editBio.trim().length > 500) { toast.error('Bio must be 500 characters or fewer.'); return }
+    const website = editWebsite.trim() ? normalizeUrl(editWebsite) : null
+    if (editWebsite.trim() && !website) { toast.error('Please enter a valid website address.'); return }
+    const avatarUrl = editAvatarUrl.trim() ? normalizeUrl(editAvatarUrl, { httpsOnly: true }) : null
+    if (editAvatarUrl.trim() && !avatarUrl) { toast.error('Avatar URL must be a secure https:// link.'); return }
+    const coverUrl = editCoverUrl.trim() ? normalizeUrl(editCoverUrl, { httpsOnly: true }) : null
+    if (editCoverUrl.trim() && !coverUrl) { toast.error('Banner URL must be a secure https:// link.'); return }
+
     setIsSavingProfile(true)
     try {
+      if (username !== profile.username) {
+        const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('username', username)
+        if (count) { toast.error('That username is already taken.'); return }
+      }
       const updates = {
-        full_name: editFullName.trim(),
-        username: editUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''),
+        full_name: editFullName.trim() || null,
+        username,
         bio: editBio.trim() || null,
         country: editCountry.trim() || null,
-        website: editWebsite.trim() || null,
-        languages: editLanguages.split(',').map(l => l.trim()).filter(Boolean),
-        avatar_url: editAvatarUrl.trim() || null,
-        cover_url: editCoverUrl.trim() || null,
-        updated_at: new Date().toISOString(),
+        website,
+        languages: editLanguages.split(',').map(l => l.trim()).filter(Boolean).slice(0, 12),
+        avatar_url: avatarUrl,
+        cover_url: coverUrl,
       }
       const { error } = await supabase.from('profiles').update(updates).eq('id', user.id)
       if (error) throw error
-      toast.success('Profile updated!')
+      toast.success('Profile updated')
       await refreshProfile()
       setProfile(prev => prev ? { ...prev, ...updates } : null)
       setActiveTab('articles')
+      if (routeUsername && routeUsername !== username) navigate(`/profile/${username}`, { replace: true })
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update')
+      toast.error(err instanceof Error ? err.message : 'Could not update your profile.')
     } finally { setIsSavingProfile(false) }
   }
 
-  const handleSaveArticle = async (status: 'published' | 'draft') => {
-    if (!user) { toast.error('Sign in to write.'); navigate('/auth/login'); return }
-    if (!writeTitle.trim()) { toast.error('Title is required.'); return }
-    if (!writeContent.trim()) { toast.error('Content is required.'); return }
+  const handleSaveArticle = async (status: 'published' | 'draft' | 'under_review') => {
+    if (!user) { toast.error('Please sign in to write.'); navigate('/auth/login', { state: { from: '/write' } }); return }
+
+    const title = writeTitle.trim()
+    const content = writeContent.trim()
+    const excerpt = writeExcerpt.trim()
+    if (title.length < 5) { toast.error('Title must be at least 5 characters.'); return }
+    if (title.length > 200) { toast.error('Title must be 200 characters or fewer.'); return }
+    if (!content) { toast.error('Please write the article body.'); return }
+    if (status === 'published' && content.length < 300) {
+      toast.error('Published articles need at least 300 characters. Save as a draft to keep working.')
+      return
+    }
+    if (excerpt.length > 400) { toast.error('Excerpt must be 400 characters or fewer.'); return }
+    const coverImage = writeCoverImage.trim() ? normalizeUrl(writeCoverImage, { httpsOnly: true }) : null
+    if (writeCoverImage.trim() && !coverImage) { toast.error('Cover image must be a secure https:// link.'); return }
+
+    const existing = editingArticleId ? articles.find(a => a.id === editingArticleId) : undefined
+    // Articles taken down by a moderator stay under review until a moderator republishes them.
+    const underReview = existing?.status === 'under_review'
+    if (underReview) status = 'under_review'
+
     setIsSubmittingArticle(true)
     try {
       const payload = {
-        author_id: user.id,
-        title: writeTitle.trim(),
-        slug: `${slugify(writeTitle)}-${Math.random().toString(36).substring(2, 7)}`,
-        excerpt: writeExcerpt.trim() || null,
-        content: writeContent.trim(),
-        cover_image: writeCoverImage.trim() || null,
+        title,
+        excerpt: excerpt || null,
+        content,
+        cover_image: coverImage,
         category_id: writeCategoryId || null,
-        status, reading_time: calculateReadingTime(writeContent),
+        status,
+        reading_time: calculateReadingTime(content),
         time_period: writeTimePeriod.trim() || null,
         country: writeCountry.trim() || null,
-        references_list: writeReferences.split('\n').map(r => r.trim()).filter(Boolean),
-        published_at: status === 'published' ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
+        language: writeLanguage,
+        references_list: writeReferences.split('\n').map(r => r.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean),
+        // Set on first publish only; the database trigger enforces the same rule.
+        ...(status === 'published' && !existing?.published_at ? { published_at: new Date().toISOString() } : {}),
       }
       if (editingArticleId) {
-        const { error } = await supabase.from('articles').update(payload).eq('id', editingArticleId).eq('author_id', user.id)
+        // Keep the original URL so shared links keep working.
+        const keepSlug = existing && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(existing.slug)
+        const { error } = await supabase.from('articles')
+          .update(keepSlug ? payload : { ...payload, slug: uniqueSlug(title) })
+          .eq('id', editingArticleId).eq('author_id', user.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('articles').insert([payload])
+        const { error } = await supabase.from('articles').insert([{ ...payload, author_id: user.id, slug: uniqueSlug(title) }])
         if (error) throw error
-        if (status === 'published' && profile) {
-          await supabase.from('profiles').update({ articles_count: (profile.articles_count || 0) + 1 }).eq('id', user.id)
-          setProfile(p => p ? { ...p, articles_count: (p.articles_count || 0) + 1 } : null)
-        }
       }
-      toast.success(status === 'published' ? '🎉 Published!' : 'Saved to drafts.')
+      toast.success(
+        underReview ? 'Changes saved. A moderator will review the article before it is republished.'
+          : status === 'published' ? (editingArticleId ? 'Article updated' : 'Article published') : 'Draft saved'
+      )
       setWriteTitle(''); setWriteCoverImage(''); setWriteCategoryId(''); setWriteExcerpt('')
-      setWriteContent(''); setWriteTimePeriod(''); setWriteCountry(''); setWriteReferences('')
+      setWriteContent(''); setWriteTimePeriod(''); setWriteCountry(''); setWriteReferences(''); setWriteLanguage('en')
       setEditingArticleId(null)
       const { data } = await supabase.from('articles').select('*, category:categories(*)').eq('author_id', user.id).order('created_at', { ascending: false })
       if (data) setArticles(data as Article[])
@@ -213,8 +261,8 @@ export default function ProfilePage() {
     setEditingArticleId(art.id); setWriteTitle(art.title)
     setWriteCoverImage(art.cover_image || ''); setWriteCategoryId(art.category_id || '')
     setWriteExcerpt(art.excerpt || ''); setWriteContent(art.content || '')
-    setWriteTimePeriod(art.time_period || ''); setWriteCountry(art.country || '')
-    setWriteReferences(art.references ? art.references.join('\n') : '')
+    setWriteTimePeriod(art.time_period || ''); setWriteCountry(art.country || ''); setWriteLanguage(art.language || 'en')
+    setWriteReferences(art.references_list ? art.references_list.join('\n') : '')
     setActiveTab('write'); window.scrollTo({ top: 300, behavior: 'smooth' })
   }
 
@@ -223,14 +271,20 @@ export default function ProfilePage() {
     try {
       const { error } = await supabase.from('articles').delete().eq('id', id).eq('author_id', user?.id)
       if (error) throw error
-      toast.success('Deleted.'); setArticles(prev => prev.filter(a => a.id !== id))
-      if (profile && profile.articles_count > 0) setProfile(p => p ? { ...p, articles_count: p.articles_count - 1 } : null)
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to delete.') }
+      toast.success('Article deleted'); setArticles(prev => prev.filter(a => a.id !== id))
+      if (editingArticleId === id) setEditingArticleId(null)
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Could not delete the article.') }
   }
 
-  const handleShareProfile = () => {
-    navigator.clipboard.writeText(window.location.href)
-    toast.success('Profile URL copied!')
+  const handleShareProfile = async () => {
+    if (!profile) return
+    const url = `${window.location.origin}/profile/${profile.username}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Profile link copied')
+    } catch {
+      toast.error('Could not copy the link')
+    }
   }
 
   // ─── LOADING STATE ─────────────────────────────────────
@@ -331,11 +385,7 @@ export default function ProfilePage() {
                     <Feather className="w-3.5 h-3.5" /> Write Article
                   </button>
                 </>
-              ) : (
-                <button onClick={() => toast.success(`Followed @${profile.username}`)} type="button" className="btn btn-primary btn-sm gap-2">
-                  <Users className="w-3.5 h-3.5" /> Follow
-                </button>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -365,7 +415,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ─── Stats ───────────────────────────────────────────── */}
-      <StatsBar articles={articles} profile={profile} />
+      <StatsBar articles={articles} />
 
       {/* ─── Tabs ────────────────────────────────────────────── */}
       <div className="container-app">
@@ -402,7 +452,7 @@ export default function ProfilePage() {
             writeTitle={writeTitle} setWriteTitle={setWriteTitle} writeCoverImage={writeCoverImage} setWriteCoverImage={setWriteCoverImage}
             writeCategoryId={writeCategoryId} setWriteCategoryId={setWriteCategoryId} writeExcerpt={writeExcerpt} setWriteExcerpt={setWriteExcerpt}
             writeContent={writeContent} setWriteContent={setWriteContent} writeTimePeriod={writeTimePeriod} setWriteTimePeriod={setWriteTimePeriod}
-            writeCountry={writeCountry} setWriteCountry={setWriteCountry} writeReferences={writeReferences} setWriteReferences={setWriteReferences}
+            writeCountry={writeCountry} setWriteCountry={setWriteCountry} writeLanguage={writeLanguage} setWriteLanguage={setWriteLanguage} writeReferences={writeReferences} setWriteReferences={setWriteReferences}
             categories={categories} editingArticleId={editingArticleId} isSubmitting={isSubmittingArticle}
             onSave={handleSaveArticle}
           />
@@ -432,18 +482,18 @@ export default function ProfilePage() {
    SUB-COMPONENTS
    ================================================================ */
 
-function StatsBar({ articles, profile }: { articles: Article[]; profile: Profile }) {
+function StatsBar({ articles }: { articles: Article[] }) {
   const [ref, inView] = useInView({ threshold: 0.2, triggerOnce: true })
+  const published = articles.filter(a => a.status === 'published')
   const stats = [
-    { icon: <BookOpen className="w-5 h-5" />, value: articles.length || profile.articles_count || 0, label: 'Articles' },
-    { icon: <Eye className="w-5 h-5" />, value: profile.total_views || articles.reduce((a, b) => a + (b.views_count || 0), 0), label: 'Total Reads' },
-    { icon: <Users className="w-5 h-5" />, value: profile.followers_count || 0, label: 'Followers' },
-    { icon: <UserCheck className="w-5 h-5" />, value: profile.following_count || 0, label: 'Following' },
+    { icon: <BookOpen className="w-5 h-5" />, value: published.length, label: 'Published' },
+    { icon: <Eye className="w-5 h-5" />, value: published.reduce((sum, a) => sum + (a.views_count || 0), 0), label: 'Reads' },
+    { icon: <Heart className="w-5 h-5" />, value: published.reduce((sum, a) => sum + (a.likes_count || 0), 0), label: 'Likes received' },
   ]
   return (
     <section ref={ref} className="container-app mt-6">
       <motion.div variants={stagger} initial="hidden" animate={inView ? 'visible' : 'hidden'}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {stats.map(s => (
           <motion.div key={s.label} variants={fadeUp} className="card p-4 flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center text-primary-600 dark:text-primary-400">
@@ -502,7 +552,9 @@ function ArticlesTab({ articles, articleFilter, setArticleFilter, isOwnProfile, 
                       </span>
                     )}
                   </div>
-                  <h3 className="font-serif font-bold text-lg text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2 mb-2">{art.title}</h3>
+                  <h3 className="font-serif font-bold text-lg text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2 mb-2">
+                    <Link to={`/article/${art.slug}`} className="hover:underline">{art.title}</Link>
+                  </h3>
                   {art.excerpt && <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-4">{art.excerpt}</p>}
                   <div className="mt-auto flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center gap-3">
@@ -511,8 +563,8 @@ function ArticlesTab({ articles, articleFilter, setArticleFilter, isOwnProfile, 
                     </div>
                     {isOwnProfile && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => onEdit(art)} className="p-1.5 hover:text-primary-500 transition-colors" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => onDelete(art.id)} className="p-1.5 hover:text-red-500 transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => onEdit(art)} className="p-1.5 hover:text-primary-500 transition-colors" aria-label={`Edit ${art.title}`}><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => onDelete(art.id)} className="p-1.5 hover:text-red-500 transition-colors" aria-label={`Delete ${art.title}`}><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     )}
                   </div>
@@ -539,12 +591,12 @@ function ArticlesTab({ articles, articleFilter, setArticleFilter, isOwnProfile, 
 
 function WriteTab({ writeTitle, setWriteTitle, writeCoverImage, setWriteCoverImage, writeCategoryId, setWriteCategoryId,
   writeExcerpt, setWriteExcerpt, writeContent, setWriteContent, writeTimePeriod, setWriteTimePeriod,
-  writeCountry, setWriteCountry, writeReferences, setWriteReferences, categories, editingArticleId, isSubmitting, onSave,
+  writeCountry, setWriteCountry, writeLanguage, setWriteLanguage, writeReferences, setWriteReferences, categories, editingArticleId, isSubmitting, onSave,
 }: {
   writeTitle: string; setWriteTitle: (v: string) => void; writeCoverImage: string; setWriteCoverImage: (v: string) => void
   writeCategoryId: string; setWriteCategoryId: (v: string) => void; writeExcerpt: string; setWriteExcerpt: (v: string) => void
   writeContent: string; setWriteContent: (v: string) => void; writeTimePeriod: string; setWriteTimePeriod: (v: string) => void
-  writeCountry: string; setWriteCountry: (v: string) => void; writeReferences: string; setWriteReferences: (v: string) => void
+  writeCountry: string; setWriteCountry: (v: string) => void; writeLanguage: string; setWriteLanguage: (v: string) => void; writeReferences: string; setWriteReferences: (v: string) => void
   categories: Category[]; editingArticleId: string | null; isSubmitting: boolean
   onSave: (status: 'published' | 'draft') => void
 }) {
@@ -572,19 +624,9 @@ function WriteTab({ writeTitle, setWriteTitle, writeCoverImage, setWriteCoverIma
             className="input-lg" />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Cover Image URL</label>
-          <div className="flex gap-3">
-            <input type="url" value={writeCoverImage} onChange={e => setWriteCoverImage(e.target.value)} placeholder="https://..." className="input flex-1" />
-            {writeCoverImage && (
-              <div className="w-14 h-10 rounded-lg overflow-hidden border border-sand-200 dark:border-dark-border flex-shrink-0">
-                <img src={writeCoverImage} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
-        </div>
+        <ImageUpload label="Cover image" value={writeCoverImage} onChange={setWriteCoverImage} bucket="article-images" previewClassName="w-32 h-20" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Category</label>
             <select value={writeCategoryId} onChange={e => setWriteCategoryId(e.target.value)} className="input">
@@ -600,6 +642,12 @@ function WriteTab({ writeTitle, setWriteTitle, writeCoverImage, setWriteCoverIma
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Country / Region</label>
             <input type="text" value={writeCountry} onChange={e => setWriteCountry(e.target.value)} placeholder="e.g. Mali" className="input" />
           </div>
+          <div>
+            <label htmlFor="write-language" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Written in</label>
+            <select id="write-language" value={writeLanguage} onChange={e => setWriteLanguage(e.target.value)} className="input">
+              {ARTICLE_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}{l.native !== l.name ? ` (${l.native})` : ''}</option>)}
+            </select>
+          </div>
         </div>
 
         <div>
@@ -612,8 +660,13 @@ function WriteTab({ writeTitle, setWriteTitle, writeCoverImage, setWriteCoverIma
             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Article Body *</label>
             <span className="text-xs text-gray-400">{calculateReadingTime(writeContent)}m · {writeContent.trim().split(/\s+/).filter(Boolean).length} words</span>
           </div>
-          <textarea rows={14} value={writeContent} onChange={e => setWriteContent(e.target.value)}
+          <textarea id="write-body" rows={14} value={writeContent} onChange={e => setWriteContent(e.target.value)}
+            aria-describedby="write-body-help"
             placeholder="Write your article here…" className="input text-sm leading-relaxed" />
+          <p id="write-body-help" className="mt-2 text-xs text-gray-400">
+            Leave a blank line between paragraphs. Use <code>## </code> or <code>### </code> for headings, <code>- </code> for lists, <code>&gt; </code> for quotes and <code>**bold**</code>.
+            {writeContent.trim().length < 300 && ` Published articles need at least 300 characters (${writeContent.trim().length}/300).`}
+          </p>
         </div>
 
         <div>
@@ -682,15 +735,9 @@ function SettingsTab({ editFullName, setEditFullName, editUsername, setEditUsern
         <input type="text" value={editLanguages} onChange={e => setEditLanguages(e.target.value)} placeholder="Yoruba, English, French" className="input" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Avatar URL</label>
-          <input type="url" value={editAvatarUrl} onChange={e => setEditAvatarUrl(e.target.value)} placeholder="https://..." className="input" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Banner URL</label>
-          <input type="url" value={editCoverUrl} onChange={e => setEditCoverUrl(e.target.value)} placeholder="https://..." className="input" />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ImageUpload label="Profile photo" value={editAvatarUrl} onChange={setEditAvatarUrl} bucket="avatars" maxDimension={512} previewClassName="w-20 h-20" />
+        <ImageUpload label="Banner" value={editCoverUrl} onChange={setEditCoverUrl} bucket="avatars" maxDimension={1800} previewClassName="w-32 h-20" />
       </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-sand-200 dark:border-dark-border">
@@ -706,7 +753,7 @@ function SettingsTab({ editFullName, setEditFullName, editUsername, setEditUsern
   )
 }
 
-function SavedTab({ bookmarks, onRemove }: { bookmarks: Array<{ id: string; type: string; title: string; subtitle?: string; catalogOrCategory: string }>; onRemove: (id: string) => void }) {
+function SavedTab({ bookmarks, onRemove }: { bookmarks: BookmarkEntry[]; onRemove: (id: string) => void }) {
   return (
     <div className="mt-8 space-y-6 animate-fade-in">
       {bookmarks.length > 0 ? (
@@ -716,7 +763,7 @@ function SavedTab({ bookmarks, onRemove }: { bookmarks: Array<{ id: string; type
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="badge badge-primary">{bm.type}</span>
-                  <button onClick={() => onRemove(bm.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Remove bookmark">
+                  <button type="button" onClick={() => onRemove(bm.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors" aria-label={`Remove ${bm.title} from saved`}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -725,7 +772,11 @@ function SavedTab({ bookmarks, onRemove }: { bookmarks: Array<{ id: string; type
               </div>
               <div className="pt-4 border-t border-sand-200 dark:border-dark-border mt-auto flex items-center justify-between">
                 <span className="text-xs text-gray-400 font-mono">{bm.catalogOrCategory}</span>
-                <Link to="/museum" className="btn btn-outline btn-sm gap-1">Inspect in Museum →</Link>
+                {bm.href || bm.type === 'article' ? (
+                  <Link to={bm.href || `/article/${bm.id}`} className="btn btn-outline btn-sm gap-1">Read →</Link>
+                ) : (
+                  <Link to="/museum" className="btn btn-outline btn-sm gap-1">Open in Museum →</Link>
+                )}
               </div>
             </div>
           ))}
@@ -733,9 +784,9 @@ function SavedTab({ bookmarks, onRemove }: { bookmarks: Array<{ id: string; type
       ) : (
         <div className="card p-12 text-center space-y-4">
           <Bookmark className="w-10 h-10 text-primary-400/60 mx-auto" />
-          <h3 className="heading-sm text-gray-900 dark:text-white">No Saved Heritage Items</h3>
+          <h3 className="heading-sm text-gray-900 dark:text-white">Nothing saved yet</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Explore the Virtual Museum and bookmark manuscripts, monuments, and oral histories to access them here.
+            Save articles and museum objects to find them here. Saved items are stored in this browser.
           </p>
           <Link to="/museum" className="btn btn-primary btn-md inline-block">Explore Virtual Museum</Link>
         </div>

@@ -1,469 +1,308 @@
-import type { Article } from '@/types'
+import type { Article, Category, Profile } from '@/types'
+
+// Editorial explainers that ship with the site. They are written by the
+// AfroArchive editorial desk, not by named scholars, and carry no engagement
+// numbers because none are tracked for them.
+
+const EDITORIAL: Profile = {
+  id: 'afroarchive-editorial',
+  username: 'afroarchive',
+  full_name: 'AfroArchive Editorial',
+  bio: 'Introductory essays prepared by the AfroArchive editorial desk from the published scholarship listed under each article.',
+  avatar_url: null,
+  cover_url: null,
+  country: null,
+  website: null,
+  languages: ['en'],
+  role: 'contributor',
+  is_verified: false,
+  followers_count: 0,
+  following_count: 0,
+  articles_count: 0,
+  total_views: 0,
+  created_at: '',
+  updated_at: '',
+}
+
+function category(slug: string, name: string, description: string): Category {
+  return { id: slug, slug, name, description, icon: null, color: null, parent_id: null, articles_count: 0, created_at: '' }
+}
+
+const CATEGORIES = {
+  philosophy: category('philosophy', 'Philosophy & Thought', 'African philosophical systems, ethics and worldviews.'),
+  history: category('history', 'History & Civilizations', 'Empires, kingdoms and the archaeology of African societies.'),
+  science: category('science', 'Science & Innovation', 'Astronomy, mathematics, medicine and technology.'),
+  art: category('art-culture', 'Art & Culture', 'Sculpture, metallurgy, music and visual traditions.'),
+}
+
+function editorial(
+  fields: Pick<Article, 'id' | 'title' | 'slug' | 'excerpt' | 'content' | 'cover_image' | 'reading_time' | 'references_list' | 'country' | 'time_period' | 'published_at'> & { category: Category }
+): Article {
+  return {
+    author_id: EDITORIAL.id,
+    status: 'published',
+    category_id: fields.category.id,
+    views_count: 0,
+    likes_count: 0,
+    comments_count: 0,
+    bookmarks_count: 0,
+    is_featured: true,
+    language: 'en',
+    youtube_embed: null,
+    created_at: fields.published_at ?? '',
+    updated_at: fields.published_at ?? '',
+    author: EDITORIAL,
+    ...fields,
+  }
+}
 
 export const FOUNDATIONAL_ARTICLES: Article[] = [
-  {
+  editorial({
     id: 'art-ubuntu-01',
-    author_id: 'a1',
     title: 'The Philosophy of Ubuntu: I Am Because We Are',
     slug: 'philosophy-of-ubuntu',
-    excerpt: 'Explore the profound African philosophical concept of Ubuntu and its implications for modern human rights, restorative justice, and community ethics.',
-    content: `Ubuntu is an ancient southern African ethical philosophy originating from Nguni and Bantu languages, best translated through the proverb "Umuntu ngumuntu ngabantu" — "A person is a person through other persons."
+    excerpt: 'Ubuntu is a southern African ethic of personhood built on relationships. This essay introduces its core ideas and how they shaped post-apartheid South Africa.',
+    content: `Ubuntu is a southern African ethical idea rooted in the Nguni and Bantu languages. It is most often expressed through the Zulu maxim "Umuntu ngumuntu ngabantu", usually translated as "a person is a person through other persons."
 
-Unlike Cartesian individualism ("I think, therefore I am"), Ubuntu posits that human personhood is inherently relational, communitarian, and interdependent. One does not arrive into the world as a fully realized individual; rather, humanity is cultivated and affirmed through compassionate relations with kin, community, ancestors, and the ecosystem.
+Where much of modern European philosophy starts from the individual mind, Ubuntu starts from relationships. Personhood is not simply given at birth; it is achieved and recognised through how one treats family, neighbours, ancestors and strangers.
 
-### Key Dimensions of Ubuntu Ethics
+### Key dimensions of Ubuntu ethics
 
-1. **Relational Ontology**: Human existence is intrinsically social. The isolation or suffering of any community member diminishes the wholeness of the entire society.
-2. **Restorative Over Retributive Justice**: In traditional jurisprudence across southern Africa, conflicts were arbitrated not to inflict retribution or isolation, but to restore equilibrium and reconcile relationships.
-3. **Collective Responsibility and Hospitality**: A traveller passing through a village was welcomed as kin; children were raised and protected by the entire collective.
+1. **Relational personhood.** Human existence is social. Harm done to one member of a community diminishes the community as a whole.
+2. **Restoration over retribution.** In many southern African dispute-resolution traditions the aim was to repair relationships and restore balance rather than to isolate the wrongdoer.
+3. **Hospitality and shared responsibility.** Obligations extend beyond the household, including care for children, elders and travellers.
 
 > "A person with Ubuntu is open and available to others, affirming of others, does not feel threatened that others are able and good, based from a proper self-assurance that comes from knowing that he or she belongs in a greater whole."
-> — Archbishop Desmond Tutu
+> — Desmond Tutu, No Future Without Forgiveness (1999)
 
-### Modern Global Applications
+### Ubuntu in public life
 
-In the post-apartheid era, Ubuntu served as the conceptual cornerstone for South Africa's Truth and Reconciliation Commission (TRC). Today, international scholars in bioethics, political philosophy, and organizational governance frequently cite Ubuntu as a powerful alternative to radical individualist paradigms.`,
+After apartheid, Ubuntu was invoked in the epilogue of South Africa's 1993 Interim Constitution and in the work of the Truth and Reconciliation Commission. Philosophers such as Mogobe Ramose and Thaddeus Metz have since developed it into systematic moral theories, and it is discussed today in bioethics, law and political philosophy. Scholars also debate how far a single "Ubuntu philosophy" can be generalised across very different communities.`,
     cover_image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=1200&q=80',
-    status: 'published',
-    category_id: 'philosophy',
-    reading_time: 8,
-    views_count: 18450,
-    likes_count: 1420,
-    comments_count: 78,
-    bookmarks_count: 389,
-    is_featured: true,
-    references: [
+    category: CATEGORIES.philosophy,
+    reading_time: 4,
+    references_list: [
       'Tutu, Desmond. No Future Without Forgiveness. Doubleday, 1999.',
       'Ramose, Mogobe B. African Philosophy Through Ubuntu. Mond Books, 1999.',
-      'Wiredu, Kwasi. Cultural Universals and Particulars: An African Perspective. Indiana University Press, 1996.',
-      'Metz, Thaddeus. "Toward an African Moral Theory." Journal of Political Philosophy, 2007.'
+      'Metz, Thaddeus. "Toward an African Moral Theory." Journal of Political Philosophy 15 (3), 2007.',
+      'Gade, Christian B. N. "The Historical Development of the Written Discourses on Ubuntu." South African Journal of Philosophy 30 (3), 2011.',
     ],
-    language: 'en',
-    published_at: '2026-07-15T10:00:00Z',
-    created_at: '2026-07-15T10:00:00Z',
-    updated_at: '2026-07-15T10:00:00Z',
-    youtube_embed: null,
     country: 'South Africa',
-    time_period: 'Contemporary & Traditional',
-    author: {
-      id: 'a1',
-      username: 'dr_nkosi',
-      full_name: 'Dr. Amara Nkosi',
-      bio: 'Professor of African Epistemology and Ethics. Author of Relational Horizons in Pan-African Thought.',
-      avatar_url: 'https://i.pravatar.cc/150?img=3',
-      cover_url: null,
-      country: 'South Africa',
-      website: 'https://afroarchive.org/scholars/amara-nkosi',
-      languages: ['en', 'zu', 'xh'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 5120,
-      following_count: 140,
-      articles_count: 48,
-      total_views: 112000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'philosophy',
-      name: 'Philosophy',
-      slug: 'philosophy',
-      description: 'African philosophical systems, ethics, and worldviews.',
-      icon: '🧠',
-      color: '#0F5132',
-      parent_id: null,
-      articles_count: 245,
-      created_at: '',
-    },
-  },
-  {
+    time_period: 'Contemporary',
+    published_at: '2026-07-15T10:00:00Z',
+  }),
+
+  editorial({
     id: 'art-zimbabwe-02',
-    author_id: 'a2',
-    title: 'Great Zimbabwe: Engineering Marvel of Medieval Africa',
+    title: 'Great Zimbabwe: Stone Architecture of a Southern African Capital',
     slug: 'great-zimbabwe-engineering',
-    excerpt: 'How did ancient Shona architects erect the massive granite walls of Great Zimbabwe without mortar, creating the epic capital of southern Africa?',
-    content: `Rising dramatically from the granite hills of Masvingo, Great Zimbabwe stands as one of humanity's most breathtaking architectural feats. Spanning over 1,700 acres, this medieval city was the nerve center of a vast Shona empire that dominated southern Africa between the 11th and 15th centuries.
+    excerpt: 'Between the 11th and 15th centuries, Shona-speaking builders raised Great Zimbabwe, the largest ancient stone structure in sub-Saharan Africa, without mortar.',
+    content: `Great Zimbabwe, near present-day Masvingo, was the capital of a Shona-speaking state that flourished from roughly the 11th to the 15th century. At its height it may have housed around 10,000 to 18,000 people, and its ruins cover more than 700 hectares.
 
-### Mortarless Drystone Architecture
+### Mortarless drystone walls
 
-What distinguishes Great Zimbabwe is its sophisticated drystone masonry. The massive curved walls — some reaching heights of 11 meters (36 feet) and thicknesses exceeding 5 meters — were constructed entirely without mortar or binding cement.
+The site is famous for its drystone masonry. The outer wall of the Great Enclosure is about 250 metres long and reaches roughly 11 metres in height and 5 metres in thickness, built entirely without mortar.
 
-Granite slabs were quarried by subjecting natural rock outcrops to controlled fire and cold water thermal cracking. The stone was then shaped into uniform blocks and laid in carefully battered, slightly inward-sloping courses to ensure structural equilibrium against seismic and wind forces for nearly a millennium.
+Builders split granite from the surrounding hills, where natural heating and cooling causes the rock to break into slabs. The blocks were dressed and laid in courses that lean slightly inward, which helps the walls stand under their own weight.
 
-### The Great Enclosure and Conical Tower
+### The Great Enclosure and the Conical Tower
 
-At the heart of the royal quarter lies the Great Enclosure, featuring an outer perimeter wall extending 250 meters. Inside stands the enigmatic Conical Tower, a solid masonry cylinder measuring 5.5 meters in diameter and 9 meters in height, believed to represent a granary symbolizing royal abundance and agricultural sovereignty.
+Inside the Great Enclosure stands a solid stone Conical Tower about 9 metres high. Its purpose is not known for certain; interpretations include a symbolic granary, a sign of royal authority or a ritual structure.
 
-> "The stone walls of Great Zimbabwe were not merely defensive fortresses; they were ideological monuments of divine kingship, acoustic amphitheaters for ritual, and hubs of a global trading empire."
-> — Prof. Tendai Chikwanda
+### Trade across the Indian Ocean
 
-### Global Commerce and Gold Trade
+Excavations have recovered:
+- Chinese celadon and other Asian ceramics
+- Persian and Near Eastern glass beads and pottery
+- Gold and copper objects linked to regional mining
+- Eight carved soapstone birds, now national symbols of Zimbabwe
 
-Archaeological excavations at the site have uncovered:
-- 14th-century Chinese celadon porcelain shards from the Ming dynasty
-- Persian cobalt glassware and Arabian copper coins
-- Seven famous carved Soapstone Birds representing ancestral protectors
+These finds show that Great Zimbabwe was connected, through Swahili coastal towns such as Kilwa, to Indian Ocean trade networks reaching Arabia, India and China.
 
-These discoveries prove that Great Zimbabwe sat at the center of trans-oceanic Indian Ocean trade networks connecting southern Africa to Cairo, Kilwa, India, and China.`,
+### Who built it
+
+Colonial-era writers claimed the site was built by outsiders. Archaeological work from David Randall-MacIver (1905) and Gertrude Caton-Thompson (1929) onward demonstrated that it was built by the ancestors of the Shona. Great Zimbabwe became a UNESCO World Heritage Site in 1986.`,
     cover_image: 'https://images.unsplash.com/photo-1504185073616-d9b5bef4e4e8?w=1200&q=80',
-    status: 'published',
-    category_id: 'history',
-    reading_time: 11,
-    views_count: 24800,
-    likes_count: 1720,
-    comments_count: 94,
-    bookmarks_count: 512,
-    is_featured: true,
-    references: [
-      'Huffman, Thomas N. Snakes and Crocodiles: Power and Symbolism in Great Zimbabwe. Wits University Press, 1996.',
+    category: CATEGORIES.history,
+    reading_time: 4,
+    references_list: [
       'Garlake, Peter. Great Zimbabwe. Thames and Hudson, 1973.',
-      'Pikirayi, Innocent. The Zimbabwe Culture: Origins and Decline of Southern Zambezian States. Rowman Altamira, 2001.',
-      'UNESCO World Heritage Centre. "Great Zimbabwe National Monument" (Ref: 364).'
+      'Huffman, Thomas N. Snakes and Crocodiles: Power and Symbolism in Ancient Zimbabwe. Witwatersrand University Press, 1996.',
+      'Pikirayi, Innocent. The Zimbabwe Culture: Origins and Decline of Southern Zambezian States. AltaMira Press, 2001.',
+      'UNESCO World Heritage Centre. "Great Zimbabwe National Monument" (ref. 364).',
     ],
-    language: 'en',
-    published_at: '2026-07-20T10:00:00Z',
-    created_at: '2026-07-20T10:00:00Z',
-    updated_at: '2026-07-20T10:00:00Z',
-    youtube_embed: null,
     country: 'Zimbabwe',
     time_period: '1100–1450 CE',
-    author: {
-      id: 'a2',
-      username: 'prof_chikwanda',
-      full_name: 'Prof. Tendai Chikwanda',
-      bio: 'Senior Archaeologist at Great Zimbabwe Monument Research Institute.',
-      avatar_url: 'https://i.pravatar.cc/150?img=8',
-      cover_url: null,
-      country: 'Zimbabwe',
-      website: null,
-      languages: ['en', 'sn'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 8300,
-      following_count: 250,
-      articles_count: 82,
-      total_views: 260000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'history',
-      name: 'History',
-      slug: 'history',
-      description: 'Empires, kingdoms, and civilizational history.',
-      icon: '🏛️',
-      color: '#B08A44',
-      parent_id: null,
-      articles_count: 530,
-      created_at: '',
-    },
-  },
-  {
+    published_at: '2026-07-20T10:00:00Z',
+  }),
+
+  editorial({
     id: 'art-timbuktu-03',
-    author_id: 'a3',
-    title: 'Timbuktu: The Harvard of the Medieval World',
+    title: 'Timbuktu: Scholarship and Manuscripts on the Niger Bend',
     slug: 'timbuktu-medieval-university',
-    excerpt: 'Long before European academies gained renown, Timbuktu hosted over 25,000 scholars and housed hundreds of thousands of scientific manuscripts.',
-    content: `Located at the crossroads of the Sahara Desert and the Niger River, Timbuktu was the intellectual, commercial, and spiritual capital of the Mali and Songhai Empires. During its golden age in the 14th to 16th centuries, the city was world-famous for its university complex and colossal library archives.
+    excerpt: 'From the 14th to the 16th century, Timbuktu was one of the great centres of Islamic learning in West Africa. Its manuscript libraries survive to this day.',
+    content: `Timbuktu sits near the Niger River on the southern edge of the Sahara. Under the Mali and then the Songhay empires it became a centre of trade and, above all, of Islamic scholarship.
 
-### The University of Sankoré
+### The mosques of Sankoré, Djinguereber and Sidi Yahya
 
-The intellectual life of Timbuktu revolved around the University of Sankoré, alongside the Djinguereber and Sidi Yahya mosques. Together, these institutions educated upwards of 25,000 university students concurrently — in a city whose population was roughly 100,000.
+Learning in Timbuktu was not organised as a single university in the modern sense. Scholars taught students in their homes and around the great mosques of Sankoré, Djinguereber and Sidi Yahya. Students moved from teacher to teacher, receiving a licence (*ijāza*) to transmit a text once they had mastered it.
 
-Students mastered advanced curricula divided into degrees:
-- General Sciences (Islamic Jurisprudence, Arabic Grammar, Rhetoric)
-- Natural Sciences (Spherical Astronomy, Optics, Medicine, Pharmacology)
-- Logic, Mathematics, and Commercial Law
+The curriculum included:
+- Qur'anic studies, law (*fiqh*) and theology
+- Arabic grammar, rhetoric and logic
+- Astronomy, arithmetic and medicine
 
-Graduation was commemorated by the conferral of the traditional turban (*Imama*), signifying intellectual mastery and ethical responsibility.
+Estimates of the number of students in the 16th century vary widely, and figures as high as 25,000 found online are not supported by the sources.
 
-### The Manuscript Tradition
+### The manuscript tradition
 
-Leo Africanus, visiting Timbuktu in the early 16th century, famously observed:
-> "Here are great stores of doctors, judges, priests, and other learned men, that are bountifully maintained at the king's cost and charges. And hither are brought diverse manuscripts or written books out of Barbarie, which are sold for more money than any other merchandise."
+Leo Africanus, who visited in the early 16th century, wrote that books brought from North Africa sold for more than any other merchandise in Timbuktu.
 
-Families across Timbuktu guarded private libraries containing hundreds of thousands of handwritten folios bound in stamped gazelle leather. These texts, written in Arabic and local languages using Ajami script, covered subjects ranging from astronomical calculation to treatments for optical diseases.`,
+Families built private libraries over generations. The manuscripts are written in Arabic and in African languages using Arabic script (*Ajami*). Their subjects range from law and theology to astronomy, medicine and commercial records.
+
+In 2012–2013, during the occupation of northern Mali, librarians and families smuggled hundreds of thousands of manuscripts to Bamako. Some manuscripts held at the Ahmed Baba Institute were burned, but most of the collections were saved.`,
     cover_image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1200&q=80',
-    status: 'published',
-    category_id: 'science',
-    reading_time: 10,
-    views_count: 21300,
-    likes_count: 1190,
-    comments_count: 62,
-    bookmarks_count: 395,
-    is_featured: false,
-    references: [
-      'Hunwick, John O. Timbuktu and the Songhay Empire. Brill, 2003.',
-      'Saad, Elias N. Social History of Timbuktu. Cambridge University Press, 1983.',
-      'Jeppie, Shamil, and Souleymane Bachir Diagne. The Meanings of Timbuktu. HSRC Press, 2008.'
+    category: CATEGORIES.history,
+    reading_time: 4,
+    references_list: [
+      'Hunwick, John O. Timbuktu and the Songhay Empire: Al-Sa‘dī’s Ta’rīkh al-sūdān down to 1613. Brill, 2003.',
+      'Saad, Elias N. Social History of Timbuktu: The Role of Muslim Scholars and Notables, 1400–1900. Cambridge University Press, 1983.',
+      'Jeppie, Shamil, and Souleymane Bachir Diagne (eds.). The Meanings of Timbuktu. HSRC Press, 2008.',
     ],
-    language: 'en',
-    published_at: '2026-07-25T10:00:00Z',
-    created_at: '2026-07-25T10:00:00Z',
-    updated_at: '2026-07-25T10:00:00Z',
-    youtube_embed: null,
     country: 'Mali',
     time_period: '1300–1600 CE',
-    author: {
-      id: 'a3',
-      username: 'fatima_diallo',
-      full_name: 'Fatima Diallo',
-      bio: 'Curator of Saharan Heritage and Sahelian Manuscripts, Timbuktu Institute.',
-      avatar_url: 'https://i.pravatar.cc/150?img=47',
-      cover_url: null,
-      country: 'Mali',
-      website: null,
-      languages: ['en', 'fr', 'bm'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 3100,
-      following_count: 190,
-      articles_count: 29,
-      total_views: 65000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'science',
-      name: 'Science & Education',
-      slug: 'science',
-      description: 'Astronomy, mathematics, and scholarly traditions.',
-      icon: '📚',
-      color: '#B08A44',
-      parent_id: null,
-      articles_count: 195,
-      created_at: '',
-    },
-  },
-  {
+    published_at: '2026-07-25T10:00:00Z',
+  }),
+
+  editorial({
     id: 'art-dogon-04',
-    author_id: 'a4',
-    title: 'The Dogon Astronomical Knowledge: Stars Before Telescopes',
+    title: 'Dogon Cosmology and the Sirius Debate',
     slug: 'dogon-astronomical-knowledge',
-    excerpt: 'The Dogon people of the Bandiagara Escarpment recorded orbits of Sirius B centuries before Western astronomers could photograph white dwarfs.',
-    content: `Along the cliffs of the Bandiagara Escarpment in central Mali, the Dogon people have preserved a cosmological system of staggering complexity. Anthropological documentation by Marcel Griaule and Germaine Dieterlen in the 1930s revealed that Dogon priest-astronomers (*Hogon*) possessed granular mathematical descriptions of the Sirius star system.
+    excerpt: 'Claims that the Dogon of Mali knew about the invisible star Sirius B are widely repeated. What did the ethnographers record, and why do later fieldworkers dispute it?',
+    content: `The Dogon live along the Bandiagara Escarpment in central Mali. Their cosmology, rituals and masked dances have been studied by anthropologists for nearly a century, and the Cliff of Bandiagara is a UNESCO World Heritage Site.
 
-### The Mystery of Po Tolo (Sirius B)
+### What Griaule and Dieterlen reported
 
-Central to Dogon cosmology is *Sigi Tolo* (Sirius A) and its invisible companion star *Po Tolo* (Sirius B). The Dogon stated that *Po Tolo*:
-- Has an elliptical 50-year orbit around Sirius A
-- Is composed of *sagala*, an unimaginably dense material heavier than all iron on Earth
-- Rotates on its own axis while maintaining an eccentric orbital focus
+In the 1930s–1950s the French ethnographers Marcel Griaule and Germaine Dieterlen worked with Dogon informants. In 1950 and in their book *Le Renard Pâle* (1965) they reported that some Dogon described:
+- a star they called *po tolo*, companion to Sirius (*sigi tolo*)
+- an orbit of about 50 years
+- a material heavier than anything on earth
 
-Modern astrophysics verified that Sirius B is indeed a superdense white dwarf with an orbital period of 50.1 years. Its white dwarf nature was only confirmed in the West through spectrographic analysis in 1915, and the first photograph was captured in 1970.
+These details resemble Sirius B, a white dwarf with a 50-year orbit that cannot be seen without a telescope. The claim was later popularised by Robert Temple's *The Sirius Mystery* (1976).
 
-> "To the Dogon, the universe is woven on a cosmic loom. The microscopic grain of Digitaria (*Po*) contains within itself the archetype of all matter and orbital movement."
-> — Dr. Cosmos Nwosu
+### Why the claim is contested
 
-### Cosmological Calendars and Agricultural Cycles
+In 1991 the anthropologist Walter van Beek led a team that restudied the Dogon. They found no knowledge of Sirius as a double star among the people they interviewed. Van Beek suggested that Griaule's findings were shaped by his method of interviewing a small number of informants. Others point to possible contact with European astronomy, which was widely discussed in the 1920s. Most anthropologists today treat the Sirius B story as unproven.
 
-The Dogon utilized their astronomical observations not as abstract theory, but to regulate the 60-year *Sigui* festival, coordinate seasonal millet planting, and navigate their harsh cliff-side environment with mathematical precision.`,
+### What is not in doubt
+
+Dogon cosmology is a rich and complex body of knowledge in its own right. It links:
+- the agricultural calendar
+- the *Sigui* ceremony, held about every 60 years
+- architecture, masks and myth
+
+Its value does not depend on matching modern astrophysics.`,
     cover_image: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1200&q=80',
-    status: 'published',
-    category_id: 'science',
-    reading_time: 9,
-    views_count: 32400,
-    likes_count: 2240,
-    comments_count: 142,
-    bookmarks_count: 610,
-    is_featured: false,
-    references: [
-      'Griaule, Marcel, and Germaine Dieterlen. Le Renard Pâle (The Pale Fox). Institut d’Ethnologie, 1965.',
-      'Temple, Robert. The Sirius Mystery. St. Martin’s Press, 1976.',
-      'Van Sertima, Ivan. Blacks in Science: Ancient and Modern. Transaction Publishers, 1983.'
+    category: CATEGORIES.science,
+    reading_time: 4,
+    references_list: [
+      'Griaule, Marcel, and Germaine Dieterlen. Le Renard Pâle. Institut d’Ethnologie, 1965.',
+      'van Beek, Walter E. A. "Dogon Restudied: A Field Evaluation of the Work of Marcel Griaule." Current Anthropology 32 (2), 1991.',
+      'UNESCO World Heritage Centre. "Cliff of Bandiagara (Land of the Dogons)" (ref. 516).',
     ],
-    language: 'en',
-    published_at: '2026-07-28T10:00:00Z',
-    created_at: '2026-07-28T10:00:00Z',
-    updated_at: '2026-07-28T10:00:00Z',
-    youtube_embed: null,
     country: 'Mali',
-    time_period: 'Traditional Knowledge',
-    author: {
-      id: 'a4',
-      username: 'cosmos_nwosu',
-      full_name: 'Dr. Cosmos Nwosu',
-      bio: 'Astrophysicist and Indigenous Science Historian.',
-      avatar_url: 'https://i.pravatar.cc/150?img=12',
-      cover_url: null,
-      country: 'Nigeria',
-      website: null,
-      languages: ['en', 'ig'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 6200,
-      following_count: 310,
-      articles_count: 59,
-      total_views: 195000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'science',
-      name: 'Science',
-      slug: 'science',
-      description: 'Indigenous astronomy and scientific systems.',
-      icon: '🔭',
-      color: '#0F5132',
-      parent_id: null,
-      articles_count: 148,
-      created_at: '',
-    },
-  },
-  {
+    time_period: '20th-century ethnography',
+    published_at: '2026-07-28T10:00:00Z',
+  }),
+
+  editorial({
     id: 'art-benin-05',
-    author_id: 'a1',
-    title: 'The Lost Wax Masterpieces: Metallurgy and Art of the Benin Kingdom',
+    title: 'Casting the Kingdom: The Brass Plaques and Heads of Benin',
     slug: 'benin-bronzes-metallurgy',
-    excerpt: 'The royal brass casters of the Kingdom of Benin perfected lost-wax metallurgy, creating commemorative heads and historical relief plaques unmatched in the Renaissance world.',
-    content: `Between the 13th and 19th centuries, the Kingdom of Benin (in modern-day Edo State, Nigeria) was renowned for its sophisticated guild of brass casters (*Igun Eronmwon*). Working under direct royal charter of the *Oba* (king), these master sculptors produced thousands of brass, bronze, and ivory masterpieces using the cire-perdue (lost wax) casting process.
+    excerpt: 'Royal guilds in the Kingdom of Benin cast brass heads and palace plaques for centuries. The works were looted in 1897 and are now at the centre of debates on restitution.',
+    content: `The Kingdom of Benin, in present-day Edo State, Nigeria, supported specialist royal guilds. The brass casters' guild, *Igun Eronmwon*, worked for the Oba (king) and produced commemorative heads, figures and relief plaques. These works are usually called the "Benin Bronzes", although most are brass.
 
-### The Lost-Wax Casting Technique
+### The lost-wax process
 
-Each brass sculpture was a singular, unreproducible work:
-1. A core was shaped from refractory clay.
-2. A detailed outer model was sculpted in refined beeswax.
-3. Multiple layers of fine clay slips were applied around the wax to form a mold.
-4. The assemblage was heated to melt out the wax (*lost wax*).
-5. Molten bronze alloy (copper, zinc, and lead) was poured into the cavity at temperatures exceeding 1,000°C.
-6. Once cooled, the mold was chipped away, revealing the metal relief.
+The casters used the lost-wax (*cire perdue*) method:
+1. A clay core was shaped.
+2. Details were modelled over it in wax.
+3. The wax model was covered with layers of clay to form a mould.
+4. The mould was heated so the wax melted and ran out.
+5. Molten metal was poured into the space the wax had left.
+6. Once cool, the mould was broken away to reveal the casting.
 
-### The Royal Court Plaques
+Because the mould is destroyed, each casting is unique.
 
-The walls and pillars of the Oba's palace in Benin City were lined with cast relief plaques depicting diplomatic encounters with 15th-century Portuguese traders, ceremonial state rituals, court musicians, and battlefield triumphs.
+### Where the metal came from
 
-> "The technique of Benin bronze casting was so advanced that early European visitors in 1897 could not believe they were produced by Black Africans — until chemical isotope analysis proved the ores and smelting were indigenous to the Niger basin."
-> — Dr. Amara Nkosi
+Benin had little local copper. From the late 15th century, Portuguese and later Dutch traders exchanged brass manillas (bracelet-shaped ingots) for goods. A 2023 chemical study (Skowronek et al.) found that the metal in many manillas, and in many Benin works, came from the Rhineland in Germany. This links Benin's art to Atlantic trade networks.
 
-### Restitution and Global Justice
+### The palace plaques
 
-Today, the Benin Bronzes stand at the vanguard of the international movement for the repatriation of looted colonial treasures. Leading institutions including the Smithsonian, German state museums, and the Horniman Museum have begun officially returning title and physical works to Nigeria.`,
+From about the 16th century, rectangular plaques were nailed to the wooden pillars of the royal palace. They show:
+- court ceremonies and officials
+- warriors
+- Portuguese visitors
+
+### 1897 and restitution
+
+In 1897 a British punitive expedition sacked Benin City. Thousands of objects were taken and sold to museums and collectors around the world.
+
+Since 2021, institutions in Germany, the United States and the United Kingdom have begun transferring ownership of looted works back to Nigeria. Debate continues over where and how the returned works should be held.`,
     cover_image: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Benin_bronze_Louvre_A97-14-1.jpg',
-    status: 'published',
-    category_id: 'arts',
-    reading_time: 9,
-    views_count: 27900,
-    likes_count: 1840,
-    comments_count: 110,
-    bookmarks_count: 480,
-    is_featured: true,
-    references: [
-      'Ben-Amos, Paula Girshick. The Art of Benin. British Museum Press, 1995.',
+    category: CATEGORIES.art,
+    reading_time: 4,
+    references_list: [
+      'Ben-Amos, Paula Girshick. The Art of Benin. British Museum Press, rev. ed. 1995.',
       'Hicks, Dan. The Brutish Museums: The Benin Bronzes, Colonial Violence and Cultural Restitution. Pluto Press, 2020.',
-      'Nevadomsky, Joseph. "Studies of Benin Art and Technology." African Arts, 2005.'
+      'Skowronek, Tobias B., et al. "German brass for Benin Bronzes: Geochemical analysis insights into the early Atlantic trade." PLOS ONE 18 (4), 2023.',
+      'Plankensteiner, Barbara (ed.). Benin: Kings and Rituals. Snoeck, 2007.',
     ],
-    language: 'en',
+    country: 'Nigeria',
+    time_period: '1400s–1897 CE',
     published_at: '2026-08-02T10:00:00Z',
-    created_at: '2026-08-02T10:00:00Z',
-    updated_at: '2026-08-02T10:00:00Z',
-    youtube_embed: null,
-    country: 'Nigeria',
-    time_period: '1200–1897 CE',
-    author: {
-      id: 'a1',
-      username: 'dr_nkosi',
-      full_name: 'Dr. Amara Nkosi',
-      bio: 'Professor of African Epistemology and Ethics.',
-      avatar_url: 'https://i.pravatar.cc/150?img=3',
-      cover_url: null,
-      country: 'South Africa',
-      website: null,
-      languages: ['en'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 5120,
-      following_count: 140,
-      articles_count: 48,
-      total_views: 112000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'arts',
-      name: 'Arts & Metallurgy',
-      slug: 'arts',
-      description: 'Sculpture, brass casting, and classical aesthetic traditions.',
-      icon: '🏺',
-      color: '#B08A44',
-      parent_id: null,
-      articles_count: 280,
-      created_at: '',
-    },
-  },
-  {
+  }),
+
+  editorial({
     id: 'art-ifa-06',
-    author_id: 'a4',
-    title: 'The Ifa Divination System: Ancient African Binary Computing and Epistemology',
+    title: 'Ifá: The 256 Odù and Yoruba Systems of Knowledge',
     slug: 'ifa-divination-binary-system',
-    excerpt: 'Centuries before modern computer science, the Yoruba Ifa corpus utilized an 8-bit binary permutation system to organize centuries of oral knowledge.',
-    content: `Recognized by UNESCO in 2005 as a Masterpiece of the Oral and Intangible Heritage of Humanity, the Ifa divination corpus of the Yoruba people of southwestern Nigeria is one of Africa's most remarkable intellectual architectures.
+    excerpt: 'Ifá divination organises a vast body of Yoruba oral literature into 256 signs generated by a two-state system. UNESCO recognised it as intangible heritage in 2005.',
+    content: `Ifá is a system of divination and a body of oral literature among the Yoruba of south-western Nigeria. It also exists across the Yoruba diaspora, from Benin Republic to Cuba and Brazil. UNESCO proclaimed it a Masterpiece of the Oral and Intangible Heritage of Humanity in 2005.
 
-### The Binary Architecture of the Odu
+### How the signs are generated
 
-At the mathematical heart of Ifa lies a base-2 binary numbering structure:
-- A divining priest (*Babalawo*) casts sixteen sacred palm nuts (*Ikin*) or an *Opele* chain.
-- The outcome generates a binary mark: single strike (|) or double strike (||).
-- These marks form an 8-bit byte composed of two columns of four bits each.
-- The basic 16 signs (*Oju Odu*) are squared ($16 \\times 16$), producing 256 principal Odù chapters.
+A diviner (*babaláwo*) uses either sixteen palm nuts (*ikin*) or a divining chain (*ọ̀pẹ̀lẹ̀*). Each cast produces one of two marks, a single or a double stroke. Eight marks, arranged in two columns of four, make one sign.
 
-Each of these 256 chapters contains up to 16 poems and historical commentaries (*Ese Ifa*), yielding an oral database containing thousands of botanical remedies, psychological counseling principles, philosophical treatises, and historical chronicles.
+There are 2⁸ = 256 possible combinations, called the *Odù*:
+- sixteen principal Odù
+- 240 combinations derived from them
 
-### Parallels with Modern Information Theory
+### The verses
 
-Mathematicians and computing pioneers have pointed out the extraordinary isomorphism between the Ifa 8-bit configuration and binary computing matrices:
-- Both rely on two discrete states (0 and 1, or single and double marks).
-- Both organize complex multidimensional data through systematic branching algorithms.
-- Both preserve computational integrity through rigorous parity checks and recited formulas.`,
+Each Odù is associated with many verses (*ẹsẹ Ifá*), which diviners memorise over years of training. The verses contain:
+- narratives
+- prescriptions for sacrifice
+- herbal knowledge
+- moral teaching
+
+The diviner recites the verses linked to the sign that appears, and the client works out which one applies to their situation.
+
+### Ifá and mathematics
+
+Because the signs are generated by a two-state process, writers such as Ron Eglash have compared Ifá to binary arithmetic and traced possible historical links with geomancy in North Africa and the Arab world. These comparisons are illuminating, but Ifá is first of all a religious and literary tradition. Scholars like Wándé Abímbọ́lá emphasise its poetry, ethics and role in community life.`,
     cover_image: 'https://images.unsplash.com/photo-1578925518470-4def7a0f08bb?w=1200&q=80',
-    status: 'published',
-    category_id: 'philosophy',
-    reading_time: 10,
-    views_count: 22100,
-    likes_count: 1610,
-    comments_count: 85,
-    bookmarks_count: 420,
-    is_featured: false,
-    references: [
-      'Abimbola, Wande. Ifá: An Exposition of Ifá Literary Corpus. Oxford University Press, 1976.',
-      'Gates, Henry Louis Jr. The Signifying Monkey: A Theory of African-American Literary Criticism. Oxford University Press, 1988.',
-      'Eglash, Ron. African Fractals: Modern Computing and Indigenous Design. Rutgers University Press, 1999.'
+    category: CATEGORIES.philosophy,
+    reading_time: 4,
+    references_list: [
+      'Abímbọ́lá, Wándé. Ifá: An Exposition of Ifá Literary Corpus. Oxford University Press Nigeria, 1976.',
+      'Bascom, William. Ifa Divination: Communication Between Gods and Men in West Africa. Indiana University Press, 1969.',
+      'Eglash, Ron. African Fractals: Modern Computing and Indigenous Design. Rutgers University Press, 1999.',
+      'UNESCO. "Ifa divination system" (inscribed 2008 on the Representative List; proclaimed 2005).',
     ],
-    language: 'en',
-    published_at: '2026-08-10T10:00:00Z',
-    created_at: '2026-08-10T10:00:00Z',
-    updated_at: '2026-08-10T10:00:00Z',
-    youtube_embed: null,
     country: 'Nigeria',
-    time_period: 'Ancient to Present',
-    author: {
-      id: 'a4',
-      username: 'cosmos_nwosu',
-      full_name: 'Dr. Cosmos Nwosu',
-      bio: 'Astrophysicist and Indigenous Science Historian.',
-      avatar_url: 'https://i.pravatar.cc/150?img=12',
-      cover_url: null,
-      country: 'Nigeria',
-      website: null,
-      languages: ['en', 'ig', 'yo'],
-      role: 'contributor',
-      is_verified: true,
-      followers_count: 6200,
-      following_count: 310,
-      articles_count: 59,
-      total_views: 195000,
-      created_at: '',
-      updated_at: '',
-    },
-    category: {
-      id: 'philosophy',
-      name: 'Philosophy',
-      slug: 'philosophy',
-      description: 'Epistemology, mathematics, and cosmology.',
-      icon: '🧠',
-      color: '#0F5132',
-      parent_id: null,
-      articles_count: 245,
-      created_at: '',
-    },
-  },
+    time_period: 'Living tradition',
+    published_at: '2026-08-10T10:00:00Z',
+  }),
 ]

@@ -13,36 +13,42 @@
 
   html {
     scroll-behavior: smooth;
-    background-color: #0C0C0E;
-    color: #F5F2EB;
+    background-color: #F5F0E8;
+    color: #111827;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    color-scheme: light;
+  }
+  html.dark {
+    background-color: #070708;
+    color: #F5F2EB;
+    color-scheme: dark;
   }
 
   body {
-    background-color: #0C0C0E;
-    color: #F5F2EB;
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
   }
 
-  /* Custom scrollbar for museum editorial feel */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: #0C0C0E;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #26262D;
-    border-radius: 3px;
+    background: #C8B896;
+    border-radius: 4px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #383842;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #D4A034;
+    background: #B08A44;
   }
 
   /* Focus outline accessibility styles */
@@ -129,34 +135,52 @@
   padding-bottom: 5rem;
 }
 
-/* Typography Headings */
+/* Typography headings: one serif voice across the portal and the museum.
+   Cormorant has a small x-height, so sizes run slightly larger than usual. */
 .heading-hero {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(2.5rem, 6vw, 4.75rem);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(2.75rem, 6.5vw, 5.25rem);
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
 }
 
 .heading-xl {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(2.25rem, 4.5vw, 3.375rem);
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 .heading-lg {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  font-weight: 600;
-  line-height: 1.25;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.005em;
 }
 
 .heading-md {
-  font-family: 'Cinzel', serif;
-  font-size: 1.5rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* Small uppercase label used above section titles, in both light and dark areas. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 1.35;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0F5132;
+}
+.dark .eyebrow {
+  color: #D4A034;
 }
 
 .heading-sm {
@@ -187,15 +211,38 @@
 .btn-primary:hover {
   background-color: #0B3E26;
 }
+.dark .btn-primary {
+  background-color: #157347;
+}
+.dark .btn-primary:hover {
+  background-color: #0F5132;
+}
+
+/* Gold call-to-action used sparingly for the museum and key highlights. */
+.btn-accent {
+  background-color: #D4A034;
+  color: #070708;
+  border: 1px solid transparent;
+}
+.btn-accent:hover {
+  background-color: #E4B856;
+}
 
 .btn-outline {
   background-color: transparent;
   color: inherit;
-  border: 1px solid rgba(245, 242, 235, 0.2);
+  border: 1px solid rgba(17, 24, 39, 0.18);
 }
 .btn-outline:hover {
+  border-color: #0F5132;
+  color: #0F5132;
+}
+.dark .btn-outline {
+  border-color: rgba(245, 242, 235, 0.2);
+}
+.dark .btn-outline:hover {
   border-color: #D4A034;
-  color: #D4A034;
+  color: #E4B856;
 }
 
 .btn-ghost {
@@ -203,7 +250,15 @@
   color: inherit;
 }
 .btn-ghost:hover {
+  background-color: rgba(17, 24, 39, 0.06);
+}
+.dark .btn-ghost:hover {
   background-color: rgba(255, 255, 255, 0.08);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .btn-sm {
@@ -267,14 +322,44 @@
   letter-spacing: 0.05em;
 }
 .badge-primary {
-  background-color: rgba(15, 81, 50, 0.2);
-  color: #4ADE80;
-  border: 1px solid rgba(74, 222, 128, 0.3);
+  background-color: rgba(15, 81, 50, 0.08);
+  color: #0F5132;
+  border: 1px solid rgba(15, 81, 50, 0.2);
+}
+.dark .badge-primary {
+  background-color: rgba(15, 81, 50, 0.25);
+  color: #86EFAC;
+  border-color: rgba(74, 222, 128, 0.3);
 }
 .badge-gray {
+  background-color: rgba(17, 24, 39, 0.05);
+  color: #4B5563;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+}
+.dark .badge-gray {
   background-color: rgba(255, 255, 255, 0.08);
   color: #DED5C3;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.badge-accent {
+  background-color: rgba(176, 138, 68, 0.12);
+  color: #755624;
+  border: 1px solid rgba(176, 138, 68, 0.3);
+}
+.dark .badge-accent {
+  background-color: rgba(212, 160, 52, 0.12);
+  color: #E4B856;
+  border-color: rgba(212, 160, 52, 0.3);
+}
+.badge-secondary {
+  background-color: rgba(176, 138, 68, 0.12);
+  color: #755624;
+  border: 1px solid rgba(176, 138, 68, 0.3);
+}
+.dark .badge-secondary {
+  background-color: rgba(212, 160, 52, 0.12);
+  color: #E4B856;
+  border-color: rgba(212, 160, 52, 0.3);
 }
 
 /* Form inputs */

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { Clock, Heart, Bookmark, Eye } from 'lucide-react'
+import { Clock, Heart, Eye } from 'lucide-react'
 import { cn, formatRelativeDate, formatNumber, getAvatarFallback, getAvatarColor } from '@/lib/utils'
+import { isUuid } from '@/lib/query'
 import type { Article } from '@/types'
 
 interface ArticleCardProps {
@@ -30,7 +31,7 @@ function DefaultCard({ article, className }: { article: Article; className?: str
         </Link>
       )}
       <div className="flex flex-col flex-1 p-5">
-        {article.category && (
+        {article.category?.slug && (
           <Link
             to={`/discover?category=${article.category.slug}`}
             className="badge badge-primary mb-3 self-start hover:bg-primary-100 dark:hover:bg-primary-500/30 transition-colors"
@@ -52,7 +53,7 @@ function DefaultCard({ article, className }: { article: Article; className?: str
           <AuthorChip author={article.author} date={article.published_at} />
           <div className="flex items-center gap-3 text-gray-400 dark:text-gray-500">
             <StatChip icon={<Clock className="w-3.5 h-3.5" />} value={`${article.reading_time}m`} />
-            <StatChip icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(article.likes_count)} />
+            {article.likes_count > 0 && <StatChip icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(article.likes_count)} />}
           </div>
         </div>
       </div>
@@ -75,7 +76,7 @@ function FeaturedCard({ article, className }: { article: Article; className?: st
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       <div className="relative z-10 p-6">
-        {article.category && (
+        {article.category?.slug && (
           <Link
             to={`/discover?category=${article.category.slug}`}
             className="badge bg-white/20 text-white backdrop-blur-sm mb-3 self-start hover:bg-white/30 transition-colors"
@@ -94,8 +95,8 @@ function FeaturedCard({ article, className }: { article: Article; className?: st
         <div className="flex items-center justify-between">
           <AuthorChip author={article.author} date={article.published_at} light />
           <div className="flex items-center gap-3 text-white/70">
-            <StatChip icon={<Eye className="w-3.5 h-3.5" />} value={formatNumber(article.views_count)} light />
-            <StatChip icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(article.likes_count)} light />
+            {article.views_count > 0 && <StatChip icon={<Eye className="w-3.5 h-3.5" />} value={formatNumber(article.views_count)} light />}
+            {article.likes_count > 0 && <StatChip icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(article.likes_count)} light />}
           </div>
         </div>
       </div>
@@ -129,7 +130,7 @@ function HorizontalCard({ article, className }: { article: Article; className?: 
           <span>{article.author?.full_name || article.author?.username}</span>
           <span>·</span>
           <StatChip icon={<Clock className="w-3 h-3" />} value={`${article.reading_time}m`} small />
-          <StatChip icon={<Heart className="w-3 h-3" />} value={formatNumber(article.likes_count)} small />
+          {article.likes_count > 0 && <StatChip icon={<Heart className="w-3 h-3" />} value={formatNumber(article.likes_count)} small />}
         </div>
       </div>
     </article>
@@ -166,21 +167,29 @@ function AuthorChip({
   if (!author) return null
   const textClass = light ? 'text-white/90' : 'text-gray-700 dark:text-gray-300'
   const subClass  = light ? 'text-white/60' : 'text-gray-400 dark:text-gray-500'
-  return (
-    <Link to={`/profile/${author.username}`} className="flex items-center gap-2 group/author">
+  const name = author.full_name || author.username
+  const content = (
+    <>
       {author.avatar_url ? (
-        <img src={author.avatar_url} alt={author.username} className="w-6 h-6 rounded-full object-cover" />
+        <img src={author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
       ) : (
-        <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-white text-2xs font-bold', getAvatarColor(author.username))}>
-          {getAvatarFallback(author.full_name || author.username)}
+        <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-white text-2xs font-bold', getAvatarColor(name || author.id))}>
+          {getAvatarFallback(name)}
         </div>
       )}
       <div>
-        <p className={cn('text-xs font-medium leading-none', textClass)}>
-          {author.full_name || author.username}
-        </p>
+        <p className={cn('text-xs font-medium leading-none', textClass)}>{name}</p>
         {date && <p className={cn('text-xs leading-none mt-0.5', subClass)}>{formatRelativeDate(date)}</p>}
       </div>
+    </>
+  )
+  // Only community members have profile pages; editorial and source bylines do not.
+  if (!isUuid(author.id) || !author.username) {
+    return <div className="flex items-center gap-2">{content}</div>
+  }
+  return (
+    <Link to={`/profile/${author.username}`} className="flex items-center gap-2 group/author">
+      {content}
     </Link>
   )
 }

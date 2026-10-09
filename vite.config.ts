@@ -15,9 +15,7 @@ export default defineConfig({
         manualChunks: {
           vendor:   ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
-          tiptap:   ['@tiptap/react', '@tiptap/starter-kit'],
           motion:   ['framer-motion'],
-          ai:       ['@google/generative-ai'],
         },
       },
     },

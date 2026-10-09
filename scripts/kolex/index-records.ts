@@ -4,7 +4,10 @@
  * and securely stores them in pgvector via store_chunk_and_embedding_rpc.
  *
  * Usage:
- *   npx tsx scripts/kolex/index-records.ts [--limit=5] [--provider=local|gemini|openai]
+ *   npx tsx scripts/kolex/index-records.ts [--limit=5] [--provider=local|gemini|openai] [--reindex]
+ *
+ * Gemini uses GEMINI_API_KEY (server env, never VITE_) and GEMINI_EMBED_MODEL
+ * (default text-embedding-004, 768 dims) — keep these identical to the curator function.
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -38,6 +41,9 @@ loadEnv();
 const args = process.argv.slice(2);
 let limit = 10;
 let filterKeyword: string | null = null;
+// --reindex: delete each processed item's existing chunks + embeddings before re-storing,
+// so every stored vector comes from the current embedding model.
+const reindex = args.includes('--reindex');
 for (const arg of args) {
   if (arg.startsWith('--limit=')) {
     limit = parseInt(arg.split('=')[1], 10) || 10;
@@ -50,14 +56,12 @@ for (const arg of args) {
   }
 }
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://gjtddtnonvyvvrwbscaq.supabase.co';
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+// Indexing writes chunks/embeddings, which RLS only allows for the service role.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Missing Supabase URL or Key in environment.');
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY (and VITE_SUPABASE_URL) must be set in .env to index records.');
   process.exit(1);
 }
 
@@ -75,6 +79,7 @@ async function main() {
   console.log(`📐 Target Vector Dimension: ${provider.dimension}`);
   console.log(`🔢 Max Records to Index: ${limit}`);
   if (filterKeyword) console.log(`🔍 Filter Keyword: "${filterKeyword}"`);
+  if (reindex) console.log('♻️  Re-index mode: existing chunks/embeddings for processed items will be replaced');
   console.log();
 
   let query = supabase
@@ -144,6 +149,29 @@ async function main() {
     });
 
     console.log(`   Generated ${chunks.length} chunk(s). Storing embeddings...`);
+
+    if (reindex) {
+      const { data: oldChunks, error: oldErr } = await supabase
+        .from('document_chunks')
+        .select('id')
+        .eq('knowledge_item_id', item.id);
+      if (oldErr) {
+        console.error(`   ❌ Could not list existing chunks, skipping item:`, oldErr.message);
+        continue;
+      }
+      const oldIds = (oldChunks || []).map((c: { id: string }) => c.id);
+      if (oldIds.length > 0) {
+        const { error: embDelErr } = await supabase.from('embeddings').delete().in('chunk_id', oldIds);
+        const { error: chunkDelErr } = embDelErr
+          ? { error: embDelErr }
+          : await supabase.from('document_chunks').delete().eq('knowledge_item_id', item.id);
+        if (chunkDelErr) {
+          console.error(`   ❌ Could not clear existing chunks, skipping item:`, chunkDelErr.message);
+          continue;
+        }
+        console.log(`   Removed ${oldIds.length} existing chunk(s).`);
+      }
+    }
 
     for (const chunk of chunks) {
       // Generate 768-dim vector
