@@ -143,24 +143,58 @@ export interface AtlasData {
   partial: boolean
 }
 
+const PAGE = 1000
+
+/** The API returns at most 1,000 rows per request, so read larger tables page by page. */
+async function fetchAll(
+  build: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
+): Promise<{ data: unknown[]; error: { message: string } | null }> {
+  const rows: unknown[] = []
+  for (let page = 0; page < 40; page++) {
+    const { data, error } = await build(page * PAGE, page * PAGE + PAGE - 1)
+    if (error) return { data: rows, error }
+    rows.push(...(data ?? []))
+    if (!data || data.length < PAGE) break
+  }
+  return { data: rows, error: null }
+}
+
 export async function fetchAtlasData(): Promise<AtlasData> {
   const [placesRes, kingdomsRes, peopleRes, recordsRes] = await Promise.all([
-    supabase
-      .from('places')
-      .select(`id, knowledge_item_id, name, modern_country, historical_region, latitude, longitude, knowledge_items(${KI_FIELDS})`)
-      .limit(2000),
-    supabase
-      .from('kingdoms_or_states')
-      .select(`id, knowledge_item_id, name, founding_year, dissolution_year, modern_countries, knowledge_items(${KI_FIELDS}), capital:places!kingdoms_or_states_capital_place_id_fkey(name, latitude, longitude)`)
-      .limit(2000),
-    supabase
-      .from('people')
-      .select(`id, knowledge_item_id, name, birth_year, death_year, knowledge_items(${KI_FIELDS}), birth_place:places!people_birth_place_id_fkey(name, latitude, longitude)`)
-      .limit(2000),
-    supabase
-      .from('knowledge_items')
-      .select('id, slug, title, summary, knowledge_type, country_codes, verification_status')
-      .limit(5000),
+    fetchAll((from, to) =>
+      supabase
+        .from('places')
+        .select(`id, knowledge_item_id, name, modern_country, historical_region, latitude, longitude, knowledge_items(${KI_FIELDS})`)
+        .not('latitude', 'is', null)
+        .order('id')
+        .range(from, to)
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from('kingdoms_or_states')
+        .select(`id, knowledge_item_id, name, founding_year, dissolution_year, modern_countries, knowledge_items(${KI_FIELDS}), capital:places!kingdoms_or_states_capital_place_id_fkey(name, latitude, longitude)`)
+        .not('capital_place_id', 'is', null)
+        .order('id')
+        .range(from, to)
+    ),
+    fetchAll((from, to) =>
+      supabase
+        .from('people')
+        .select(`id, knowledge_item_id, name, birth_year, death_year, knowledge_items(${KI_FIELDS}), birth_place:places!people_birth_place_id_fkey(name, latitude, longitude)`)
+        .not('birth_place_id', 'is', null)
+        .order('id')
+        .range(from, to)
+    ),
+    // Objects without coordinates are grouped by country; scholarly works are left out.
+    fetchAll((from, to) =>
+      supabase
+        .from('knowledge_items')
+        .select('id, slug, title, summary, knowledge_type, country_codes, verification_status')
+        .in('knowledge_type', ['cultural_artifact', 'manuscript'])
+        .not('country_codes', 'eq', '{}')
+        .order('id')
+        .range(from, to)
+    ),
   ])
 
   const failures = [placesRes, kingdomsRes, peopleRes, recordsRes].filter(r => r.error).length

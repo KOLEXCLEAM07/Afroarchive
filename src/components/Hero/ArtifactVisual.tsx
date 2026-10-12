@@ -5,6 +5,8 @@ export interface ArtifactVisualProps {
   artifactTitle?: string
   originDate?: string
   originLocation?: string
+  /** Photo credit shown under the frame when a real image is used. */
+  credit?: string
   className?: string
 }
 
@@ -13,6 +15,7 @@ export const ArtifactVisual: React.FC<ArtifactVisualProps> = ({
   artifactTitle = 'Timbuktu manuscripts',
   originDate = '13th–20th centuries',
   originLocation = 'Timbuktu, Mali',
+  credit,
   className = '',
 }) => {
   const [imageError, setImageError] = useState(false)
@@ -24,12 +27,13 @@ export const ArtifactVisual: React.FC<ArtifactVisualProps> = ({
         {/* Museum Exhibition Frame Plate */}
         <div className="relative rounded-2xl bg-dark-surface p-2 md:p-3 border border-white/10 shadow-xl overflow-hidden">
 
-          <div className="relative aspect-[4/5] sm:aspect-[4/4.8] w-full rounded-xl bg-dark-card overflow-hidden border border-white/5">
+          <div className={`relative w-full rounded-xl bg-dark-card overflow-hidden border border-white/5 ${imageSrc && !imageError ? 'aspect-[4/3]' : 'aspect-[4/5] sm:aspect-[4/4.8]'}`}>
 
             {imageSrc && !imageError ? (
               <img
                 src={imageSrc}
-                alt={`${artifactTitle} - ${originLocation}`}
+                alt={`${artifactTitle}, ${originLocation}`}
+                referrerPolicy="no-referrer"
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
               />
@@ -127,6 +131,9 @@ export const ArtifactVisual: React.FC<ArtifactVisualProps> = ({
           </div>
         </div>
       </div>
+      {credit && imageSrc && !imageError && (
+        <p className="mt-2 text-xs text-ivory-500 text-right">{credit}</p>
+      )}
     </div>
   )
 }

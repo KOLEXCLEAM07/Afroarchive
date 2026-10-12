@@ -1,7 +1,8 @@
 /**
  * AfroArchive Ingestion Framework - CLI Runner
  * Usage:
- *   npx tsx scripts/ingestion/cli.ts --source=<source_name> [--limit=N] [--dry-run] [--resume] [--incremental]
+ *   npx tsx scripts/ingestion/cli.ts --source=<source_name> [--limit=N] [--topic=NAME] [--dry-run] [--resume]
+ *                                    [--rate=MS] [--batch=N] [--incremental] [--no-wikipedia]
  */
 
 import {
@@ -13,9 +14,14 @@ import {
   OpenAfricaImporter,
   MasakhaneImporter,
   CuratedImporter,
+  MetMuseumImporter,
+  ArticImporter,
+  ClevelandImporter,
+  SketchfabImporter,
 } from './importers';
+import { ConnectorOptions } from './types';
 
-const importersMap: Record<string, () => BaseImporter> = {
+export const importersMap: Record<string, () => BaseImporter> = {
   wikidata: () => new WikidataImporter(),
   openalex: () => new OpenAlexImporter(),
   wikimedia: () => new WikimediaImporter(),
@@ -24,17 +30,48 @@ const importersMap: Record<string, () => BaseImporter> = {
   openafrica: () => new OpenAfricaImporter(),
   masakhane: () => new MasakhaneImporter(),
   curated: () => new CuratedImporter(),
+  met: () => new MetMuseumImporter(),
+  artic: () => new ArticImporter(),
+  cleveland: () => new ClevelandImporter(),
+  sketchfab: () => new SketchfabImporter(),
 };
+
+function argValue(args: string[], name: string): string | undefined {
+  const hit = args.find((a) => a.startsWith(`--${name}=`));
+  return hit ? hit.slice(name.length + 3) : undefined;
+}
+
+function intArg(args: string[], name: string): number | undefined {
+  const raw = argValue(args, name);
+  if (raw === undefined) return undefined;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) {
+    console.error(`❌ --${name} must be a non-negative integer (got "${raw}")`);
+    process.exit(1);
+  }
+  return n;
+}
+
+/** Parses shared CLI flags into ConnectorOptions (used by cli.ts and run-all.ts). */
+export function parseCommonOptions(args: string[]): ConnectorOptions {
+  const filters: Record<string, unknown> = {};
+  if (args.includes('--no-wikipedia')) filters.wikipediaSummaries = false;
+  return {
+    dryRun: args.includes('--dry-run'),
+    resume: args.includes('--resume'),
+    incremental: args.includes('--incremental'),
+    rateLimitMs: intArg(args, 'rate'),
+    batchSize: intArg(args, 'batch') || undefined,
+    filters,
+  };
+}
 
 async function main() {
   const args = process.argv.slice(2);
-  const sourceArg = args.find((a) => a.startsWith('--source='))?.split('=')[1];
-  const limitArg = args.find((a) => a.startsWith('--limit='))?.split('=')[1];
-  const topicArg = args.find((a) => a.startsWith('--topic='))?.split('=')[1];
-  const queryArg = args.find((a) => a.startsWith('--query='))?.split('=')[1];
-  const dryRun = args.includes('--dry-run');
-  const resume = args.includes('--resume');
-  const incremental = args.includes('--incremental');
+  const sourceArg = argValue(args, 'source');
+  const limit = intArg(args, 'limit');
+  const topicArg = argValue(args, 'topic');
+  const queryArg = argValue(args, 'query');
 
   console.log('╔═════════════════════════════════════════════════════════════╗');
   console.log('║       AfroArchive Knowledge Ingestion Engine v1.0           ║');
@@ -47,16 +84,18 @@ async function main() {
     }
     console.log('\nOptions:');
     console.log('  --limit=N        Maximum records to process (default: 5)');
-    console.log('  --topic=NAME     Filter by specific African scholarly topic');
+    console.log('  --topic=NAME     Topic / mode (wikidata: states|sites|rulers|people; met: africa|egyptian)');
     console.log('  --query=TEXT     Custom search query string');
-    console.log('  --dry-run        Simulate ingestion without writing to DB');
+    console.log('  --dry-run        Fetch + normalize without touching the DB (no credentials needed)');
     console.log('  --resume         Resume from saved checkpoint cursor in database');
+    console.log('  --rate=MS        Pause after each DB upsert (default 800; 100 recommended for bulk)');
+    console.log('  --batch=N        Records requested per API page');
+    console.log('  --no-wikipedia   Wikidata: do not fetch Wikipedia lead text (keeps records CC0)');
     console.log('  --incremental    Only ingest records updated since last sync');
     console.log('\nExamples:');
-    console.log('  npx tsx scripts/ingestion/cli.ts --source=openalex --limit=5');
-    console.log('  npx tsx scripts/ingestion/cli.ts --source=openalex --topic="philosophy" --limit=3');
-    console.log('  npx tsx scripts/ingestion/cli.ts --source=openalex --topic="archaeology" --limit=3');
-    console.log('  npx tsx scripts/ingestion/cli.ts --source=wikidata --limit=5 --resume');
+    console.log('  npx tsx scripts/ingestion/cli.ts --source=met --limit=40 --dry-run');
+    console.log('  npx tsx scripts/ingestion/cli.ts --source=wikidata --topic=sites --limit=1500 --rate=100 --resume');
+    console.log('  npx tsx scripts/ingestion/run-all.ts --dry-run');
     return;
   }
 
@@ -68,19 +107,19 @@ async function main() {
   }
 
   const importer = factory();
-  const maxRecords = limitArg ? parseInt(limitArg, 10) : 5;
-
   await importer.run({
-    maxRecords,
-    dryRun,
-    resume,
-    incremental,
+    ...parseCommonOptions(args),
+    maxRecords: limit || 5,
     topic: topicArg,
     query: queryArg,
   });
 }
 
-main().catch((err) => {
-  console.error('\n💥 Ingestion Failed:', err);
-  process.exit(1);
-});
+// Only run when executed directly (run-all.ts imports helpers from this module).
+const invokedDirectly = /cli\.ts$/.test(process.argv[1] || '');
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error('\n💥 Ingestion Failed:', err);
+    process.exit(1);
+  });
+}

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "ingest": "tsx scripts/ingestion/cli.ts"
+    "ingest": "tsx scripts/ingestion/cli.ts",
+    "ingest:all": "tsx scripts/ingestion/run-all.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

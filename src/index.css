@@ -59,6 +59,10 @@
   }
 }
 
+/* Component classes live in the components layer so Tailwind utilities
+   (w-auto, p-*, bg-*) on the same element can override them. */
+@layer components {
+
 /* ============================================================
    GLASSMORPHISM & NAV BACKDROP CLASSES
    ============================================================ */
@@ -575,6 +579,8 @@
 .bg-charcoal-850 {
   background-color: #131316;
 }
+
+} /* end @layer components */
 
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {

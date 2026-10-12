@@ -4,7 +4,7 @@ import { X, BookOpen, MapPin, Landmark, FileText, Share2, ArrowUpRight } from 'l
 import { ArtifactItem } from '../../types/archiveTypes'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import ArtifactViewer3D from './ArtifactViewer3D'
+import Model3DViewer from '../museum/Model3DViewer'
 import { useModalStack } from '../../hooks/useScrollLock'
 import { shareLink } from '../museum/shareLink'
 
@@ -92,14 +92,17 @@ export const ArtifactDetailDrawer: React.FC<ArtifactDetailDrawerProps> = ({
         </div>
 
         {/* Archival Vessel Visual */}
-        {artifact.imageSrc ? (
-          <div className="w-full flex justify-center py-4 rounded-2xl bg-dark-card border border-white/10 overflow-hidden">
-            <ArtifactViewer3D
-              imageSrc={artifact.imageSrc}
-              title={artifact.title}
-              className="w-full"
+        {artifact.model3d ? (
+          <Model3DViewer model={artifact.model3d} title={artifact.title} credit={artifact.model3d.credit} />
+        ) : artifact.imageSrc ? (
+          <figure className="w-full overflow-hidden rounded-2xl border border-white/10 bg-dark-card">
+            <img
+              src={artifact.imageSrc}
+              alt={artifact.title}
+              referrerPolicy="no-referrer"
+              className="w-full max-h-[28rem] object-contain"
             />
-          </div>
+          </figure>
         ) : (
           <div className="relative aspect-[16/9] w-full rounded-2xl bg-dark-card border border-white/10 flex flex-col justify-between overflow-hidden">
             <div className="relative z-10 flex justify-between items-start p-6">

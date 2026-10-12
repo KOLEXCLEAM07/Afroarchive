@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import {
-  ArrowRight, BookOpen, Users, Archive, Library,
+  ArrowRight, BookOpen, Users, Archive, Library, Brain, Crown, Telescope, Languages, Gem,
   ChevronRight, Landmark, ExternalLink, Scale,
 } from 'lucide-react'
 import { cn, formatNumber } from '@/lib/utils'
@@ -21,12 +21,12 @@ const TOPICS = [
 ]
 
 const THEMES = [
-  { name: 'Philosophy & Thought',  icon: '🧠', color: 'from-emerald-600 to-emerald-800', to: '/discover?category=philosophy' },
-  { name: 'History & Civilizations', icon: '👑', color: 'from-amber-600 to-amber-800', to: '/discover?category=history' },
-  { name: 'Science & Innovation',  icon: '🔭', color: 'from-blue-600 to-blue-800',     to: '/discover?category=science' },
-  { name: 'Languages & Scripts',   icon: '🗣️', color: 'from-purple-600 to-purple-800', to: '/discover?category=languages' },
-  { name: 'Art & Culture',         icon: '🏺', color: 'from-rose-600 to-rose-800',     to: '/discover?category=art-culture' },
-  { name: 'Archive records',       icon: '🗂️', color: 'from-orange-600 to-orange-800', to: '/discover?type=records' },
+  { name: 'Philosophy & Thought',    icon: Brain,     to: '/discover?category=philosophy' },
+  { name: 'History & Civilizations', icon: Crown,     to: '/discover?category=history' },
+  { name: 'Science & Innovation',    icon: Telescope, to: '/discover?category=science' },
+  { name: 'Languages & Scripts',     icon: Languages, to: '/discover?category=languages' },
+  { name: 'Art & Culture',           icon: Gem,       to: '/discover?category=art-culture' },
+  { name: 'Archive records',         icon: Archive,   to: '/discover?type=records' },
 ]
 
 const PHILOSOPHERS = [
@@ -52,7 +52,9 @@ const stagger: Variants = { hidden: {}, visible: { transition: { staggerChildren
 export default function LandingPage() {
   useDocumentTitle(null)
   return (
-    <div className="overflow-x-hidden">
+    // Pulled up under the transparent navbar so the hero gradient sits behind it.
+    // (Done here, not on the hero, because overflow-x-hidden would clip a negative margin.)
+    <div className="overflow-x-hidden -mt-16 md:-mt-18">
       <HeroSection />
       <StatsSection />
       <FeaturedArticlesSection />
@@ -81,7 +83,7 @@ function HeroSection() {
   }, [reduceMotion, words.length])
 
   return (
-    <section className="relative min-h-[92vh] flex items-center overflow-hidden">
+    <section className="relative pt-16 md:pt-18 min-h-[92vh] flex items-center overflow-hidden">
       <div className="absolute inset-0 animated-gradient opacity-90" />
       <div
         className="absolute inset-0 opacity-10"
@@ -108,22 +110,27 @@ function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="heading-hero text-white mb-4 !leading-[1.15] sm:!leading-[1.05]"
+          className="heading-hero text-white mb-6"
         >
-          <span className="block sm:inline">Preserve African </span>
-          <span className="inline-block relative overflow-hidden align-top sm:align-bottom h-[1.25em] min-h-[1.25em] text-accent-300">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={words[wordIdx]}
-                initial={{ opacity: 0, y: '100%' }}
-                animate={{ opacity: 1, y: '0%' }}
-                exit={{ opacity: 0, y: '-100%' }}
-                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                className="block"
-              >
-                {words[wordIdx]}
-              </motion.span>
-            </AnimatePresence>
+          <span className="sr-only">Preserve African knowledge, history, philosophy, culture and wisdom</span>
+          <span aria-hidden="true">
+            <span className="block sm:inline">Preserve African </span>
+            {/* All words share one grid cell, so the slot is as wide as the longest word and the
+                headline never shifts or loses its baseline while the word changes. */}
+            <span className="inline-grid text-accent-300 sm:text-left">
+              {words.map((word, i) => (
+                <span
+                  key={word}
+                  className={cn(
+                    'col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-out',
+                    // The outgoing word fades first; the incoming one waits, so they never overlap.
+                    i === wordIdx ? 'opacity-100 translate-y-0 delay-300' : 'opacity-0 translate-y-2 delay-0'
+                  )}
+                >
+                  {word}
+                </span>
+              ))}
+            </span>
           </span>
         </motion.h1>
 
@@ -140,16 +147,16 @@ function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 justify-center"
         >
-          <Link to="/discover" className="btn btn-xl bg-white text-primary-700 hover:bg-sand-100 shadow-lg hover:shadow-xl transition-all" id="hero-explore-btn">
-            Start exploring <ArrowRight className="w-5 h-5" />
+          <Link to="/discover" className="btn btn-lg gap-2 whitespace-nowrap bg-white text-primary-700 hover:bg-sand-100 shadow-lg" id="hero-explore-btn">
+            Start exploring <ArrowRight className="w-5 h-5" aria-hidden="true" />
           </Link>
-          <Link to="/museum" className="btn btn-xl bg-amber-500/20 text-amber-100 border-2 border-amber-400/50 hover:bg-amber-500/30 backdrop-blur-sm group" id="hero-museum-btn">
+          <Link to="/museum" className="btn btn-lg gap-2 whitespace-nowrap btn-accent" id="hero-museum-btn">
             <Landmark className="w-5 h-5" aria-hidden="true" />
-            <span>Visit the virtual museum</span>
+            Visit the virtual museum
           </Link>
-          <Link to="/auth/signup" className="btn btn-xl bg-white/10 text-white border-2 border-white/30 hover:bg-white/20 backdrop-blur-sm" id="hero-signup-btn">
+          <Link to="/auth/signup" className="btn btn-lg whitespace-nowrap bg-white/10 text-white border border-white/30 hover:bg-white/20" id="hero-signup-btn">
             Become a contributor
           </Link>
         </motion.div>
@@ -349,8 +356,8 @@ function ThemesSection() {
                 to={theme.to}
                 className="group flex flex-col items-center text-center p-5 h-full rounded-2xl border border-sand-200 dark:border-dark-border hover:border-primary-300 dark:hover:border-primary-600 bg-white dark:bg-dark-card hover:shadow-glow transition-all duration-300 hover:-translate-y-1"
               >
-                <div className={cn('w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-2xl mb-3 transition-transform duration-300 group-hover:scale-110', theme.color)} aria-hidden="true">
-                  {theme.icon}
+                <div className="w-14 h-14 rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-accent-300 flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-105" aria-hidden="true">
+                  <theme.icon className="w-6 h-6" strokeWidth={1.75} />
                 </div>
                 <h3 className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                   {theme.name}

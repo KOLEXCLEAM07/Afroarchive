@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowUpRight, BookOpen, MapPin, Calendar, Bookmark } from 'lucide-react'
+import { ArrowUpRight, BookOpen, MapPin, Calendar, Bookmark, Box } from 'lucide-react'
 import { ArtifactItem } from '../../types/archiveTypes'
 
 export interface ArtifactCardProps {
@@ -48,11 +48,14 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
 
         {/* Thumbnail Graphic Visual */}
         <div className="relative w-full h-full p-4 flex flex-col justify-between select-none z-10">
-          <div className="flex justify-between items-start">
-            <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 font-mono text-[11px] text-ivory-100 backdrop-blur-md max-w-[60%] truncate">
-              {artifact.catalogNumber}
-            </span>
-            
+          <div className="flex justify-between items-start gap-2">
+            {/* Catalogue numbers are useful for museum objects; imported records carry their source on the detail page instead. */}
+            {!artifact.recordSlug ? (
+              <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 font-mono text-[11px] text-ivory-100 backdrop-blur-md max-w-[55%] truncate">
+                {artifact.catalogNumber}
+              </span>
+            ) : <span />}
+
             <div className="flex items-center gap-2">
               {onToggleBookmark && (
                 <button
@@ -71,9 +74,16 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
                   <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-accent-400' : ''}`} />
                 </button>
               )}
-              <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 text-[11px] font-medium text-ivory-100 backdrop-blur-md">
-                {artifact.regionLabel}
-              </span>
+              {artifact.model3d && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-semibold text-charcoal-950">
+                  <Box className="w-3 h-3" aria-hidden="true" /> 3D
+                </span>
+              )}
+              {artifact.regionLabel && (
+                <span className="rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 text-[11px] font-medium text-ivory-100 backdrop-blur-md">
+                  {artifact.regionLabel}
+                </span>
+              )}
             </div>
           </div>
 
@@ -94,7 +104,7 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
 
           <div className="flex justify-between items-end text-white/90 text-xs z-10 -mx-4 -mb-4 px-4 py-2.5">
             <span>{artifact.era}</span>
-            <span className="text-accent-300 font-semibold capitalize">{artifact.category}</span>
+            <span className="text-accent-300 font-semibold capitalize ml-auto">{artifact.category}</span>
           </div>
         </div>
 
@@ -105,10 +115,12 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
       {/* Card Content Details */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-ivory-400 text-xs">
-            <Calendar className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
-            <span>{artifact.dateRange}</span>
-          </div>
+          {artifact.dateRange && (
+            <div className="flex items-center gap-2 text-ivory-400 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-accent-400" aria-hidden="true" />
+              <span>{artifact.dateRange}</span>
+            </div>
+          )}
 
           <h3 className="font-serif font-bold text-lg md:text-xl text-white group-hover:text-accent-300 transition-colors duration-300 leading-snug">
             {artifact.title}
@@ -121,15 +133,17 @@ export const ArtifactCard: React.FC<ArtifactCardProps> = ({
 
         {/* Bottom Location & Inspect Action Button */}
         <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-ivory-400 text-xs truncate max-w-[170px]">
-            <MapPin className="w-3 h-3 text-accent-400 flex-shrink-0" aria-hidden="true" />
-            <span className="truncate">{artifact.originLocation}</span>
-          </div>
+          {artifact.originLocation && (
+            <div className="flex items-center gap-1.5 text-ivory-400 text-xs truncate max-w-[170px]">
+              <MapPin className="w-3 h-3 text-accent-400 flex-shrink-0" aria-hidden="true" />
+              <span className="truncate">{artifact.originLocation}</span>
+            </div>
+          )}
 
           <button
             onClick={() => onInspect(artifact)}
             type="button"
-            className="inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
+            className="ml-auto inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
           >
             <span>Provenance</span>
             <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" aria-hidden="true" />

@@ -176,6 +176,8 @@ export interface ConnectorOptions {
   incremental?: boolean;
   topic?: string;
   query?: string;
+  /** Pause in ms after each DB upsert (and between batches). */
+  rateLimitMs?: number;
 }
 
 export interface BatchFetchResult<TRawRecord = unknown> {

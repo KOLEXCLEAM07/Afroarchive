@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Clock, Heart, Eye } from 'lucide-react'
+import { Clock, Heart, Eye, Box } from 'lucide-react'
 import { cn, formatRelativeDate, formatNumber, getAvatarFallback, getAvatarColor } from '@/lib/utils'
 import { isUuid } from '@/lib/query'
 import type { Article } from '@/types'
@@ -31,6 +31,9 @@ function DefaultCard({ article, className }: { article: Article; className?: str
         </Link>
       )}
       <div className="flex flex-col flex-1 p-5">
+        {article.has_3d && (
+          <span className="badge badge-accent mb-3 self-start gap-1"><Box className="w-3 h-3" aria-hidden="true" /> 3D view</span>
+        )}
         {article.category?.slug && (
           <Link
             to={`/discover?category=${article.category.slug}`}
@@ -52,7 +55,7 @@ function DefaultCard({ article, className }: { article: Article; className?: str
         <div className="mt-auto flex items-center justify-between gap-3">
           <AuthorChip author={article.author} date={article.published_at} />
           <div className="flex items-center gap-3 text-gray-400 dark:text-gray-500">
-            <StatChip icon={<Clock className="w-3.5 h-3.5" />} value={`${article.reading_time}m`} />
+            {!article.is_record && <StatChip icon={<Clock className="w-3.5 h-3.5" />} value={`${article.reading_time}m`} />}
             {article.likes_count > 0 && <StatChip icon={<Heart className="w-3.5 h-3.5" />} value={formatNumber(article.likes_count)} />}
           </div>
         </div>
@@ -129,7 +132,7 @@ function HorizontalCard({ article, className }: { article: Article; className?: 
         <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
           <span>{article.author?.full_name || article.author?.username}</span>
           <span>·</span>
-          <StatChip icon={<Clock className="w-3 h-3" />} value={`${article.reading_time}m`} small />
+          {!article.is_record && <StatChip icon={<Clock className="w-3 h-3" />} value={`${article.reading_time}m`} small />}
           {article.likes_count > 0 && <StatChip icon={<Heart className="w-3 h-3" />} value={formatNumber(article.likes_count)} small />}
         </div>
       </div>

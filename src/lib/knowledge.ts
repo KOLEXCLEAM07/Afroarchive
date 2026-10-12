@@ -17,14 +17,14 @@ export interface KnowledgeRecord {
   created_at: string | null
   verification_status?: string | null
   sources?: { name: string | null; slug: string | null; base_url?: string | null } | null
-  media?: Array<{ file_url: string | null; thumbnail_url: string | null }> | null
+  media?: Array<{ file_url: string | null; thumbnail_url: string | null; media_type?: string | null }> | null
 }
 
 /** PostgREST filter that hides records moderators have flagged. */
 export const NOT_FLAGGED = 'verification_status.is.null,verification_status.neq.flagged'
 
 export const KNOWLEDGE_SELECT =
-  'id, slug, title, summary, content, knowledge_type, source_url, original_url, license_type, license_url, attribution, country_codes, time_period, created_at, verification_status, sources(name, slug, base_url), media(file_url, thumbnail_url)'
+  'id, slug, title, summary, content, knowledge_type, source_url, original_url, license_type, license_url, attribution, country_codes, time_period, created_at, verification_status, sources(name, slug, base_url), media(file_url, thumbnail_url, media_type)'
 
 const LICENSE_LABELS: Record<string, string> = {
   public_domain: 'Public domain',
@@ -46,6 +46,36 @@ export function knowledgeTypeLabel(type: string | null | undefined): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+/**
+ * Imported file names make poor titles ("MaliDjennéMosquée", "Sudan, Nubian pyramids (31444835441)",
+ * "Mask 2   animal   African Art   … (2022 04 06 02.15.27 by Terry Ballard)"). Tidy them for display.
+ */
+export function cleanRecordTitle(raw: string): string {
+  let t = raw.replace(/\.(jpe?g|png|tiff?|webp|gif)$/i, '').replace(/_/g, ' ')
+  t = t.replace(/\s*\((?:\d{4}[\s\d.:-]*)?(?:by [^)]+)?\)\s*$/i, '')
+  t = t.replace(/\s*\(\d{6,}\)\s*$/, '').replace(/\.?\s*Wellcome [A-Z]\d{5,}$/, '')
+  const parts = t.split(/\s{2,}/).map(p => p.trim()).filter(Boolean)
+  if (parts.length > 2) t = `${parts[0]}, ${parts[1]}`
+  t = t.replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2')
+  // Drop a trailing photo counter ("Great Mosque of Djenné 1") but keep inventory numbers ("A97 14 1").
+  t = t.replace(/(\D)\s+\d{1,2}$/, '$1').replace(/\s+/g, ' ').trim()
+  return t || raw
+}
+
+/** Strips wiki link prefixes from imported descriptions ("w:Great Mosque", "en:Djenné"). */
+export function cleanRecordText(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const t = raw.replace(/(^|[\s(,])(?:w|en|fr|commons|wikipedia):(?=\S)/gi, '$1').replace(/\s{2,}/g, ' ').trim()
+  return t || null
+}
+
+/** Keeps period strings that describe history ("1100–1450 CE", "16th century"); drops upload years and noise. */
+export function usefulPeriod(period: string | null | undefined): string | null {
+  if (!period) return null
+  const p = period.trim()
+  return /(century|centuries|BCE|\bBC\b|\bCE\b|\bAD\b|\bc\.\s*\d|\d\s*[–-]\s*\d|\d{3,4}s\b)/i.test(p) ? p : null
+}
+
 /** 1235 → "1235", 300 → "300 CE", -750 → "750 BCE"; prefixes "c." when approximate. */
 export function formatYear(year: number | null | undefined, approximate = false): string | null {
   if (year === null || year === undefined) return null
@@ -62,8 +92,15 @@ function isImageUrl(url: string | null | undefined): url is string {
   return !!url && (/\.(jpe?g|png|webp|gif)$/i.test(url) || url.includes('upload.wikimedia.org'))
 }
 
+/** The 3D scan attached to a record, if any (embedded from Sketchfab, never downloaded). */
+export function recordModel3d(item: KnowledgeRecord): { embedUrl: string; poster: string | null } | null {
+  const m = item.media?.find(x => x.media_type === '3d_model' && x.file_url)
+  return m ? { embedUrl: m.file_url as string, poster: m.thumbnail_url } : null
+}
+
 export function recordImage(item: KnowledgeRecord): string | null {
-  const media = item.media?.find(m => m.thumbnail_url || m.file_url)
+  const media = item.media?.find(m => m.media_type !== '3d_model' && (m.thumbnail_url || m.file_url))
+    ?? item.media?.find(m => m.thumbnail_url)
   if (media) return media.thumbnail_url || media.file_url
   if (isImageUrl(item.original_url)) return item.original_url
   return null
@@ -95,11 +132,13 @@ export function knowledgeItemToArticle(item: KnowledgeRecord): Article {
 
   return {
     id: item.id,
+    is_record: true,
+    has_3d: !!recordModel3d(item),
     author_id: author.id,
-    title: item.title,
+    title: cleanRecordTitle(item.title),
     slug: item.slug || item.id,
-    excerpt: item.summary || (item.content ? item.content.slice(0, 180).trimEnd() + '…' : null),
-    content: item.content || item.summary || '',
+    excerpt: cleanRecordText(item.summary) || (item.content ? cleanRecordText(item.content.slice(0, 180).trimEnd() + '…') : null),
+    content: cleanRecordText(item.content || item.summary) || '',
     cover_image: recordImage(item),
     status: 'published',
     category_id: item.knowledge_type,
@@ -116,7 +155,7 @@ export function knowledgeItemToArticle(item: KnowledgeRecord): Article {
     updated_at: item.created_at ?? '',
     youtube_embed: null,
     country: item.country_codes?.[0] ?? null,
-    time_period: item.time_period,
+    time_period: usefulPeriod(item.time_period),
     author,
     category: {
       id: item.knowledge_type ?? 'record',

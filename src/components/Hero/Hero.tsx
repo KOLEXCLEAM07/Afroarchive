@@ -150,7 +150,12 @@ export const Hero: React.FC<HeroProps> = ({ onExploreClick, onRegionClick }) => 
             variants={artifactVariants}
             className="lg:col-span-5 relative w-full flex justify-center lg:justify-end"
           >
-            <ArtifactVisual />
+            <ArtifactVisual
+              imageSrc="https://upload.wikimedia.org/wikipedia/commons/3/39/Timbuktu-manuscripts-astronomy-tables.jpg"
+              artifactTitle="Astronomy tables"
+              originLocation="Timbuktu manuscripts, Mali"
+              credit="Timbuktu manuscript with astronomical tables. Public domain, via Wikimedia Commons"
+            />
           </motion.div>
         </motion.div>
       </div>

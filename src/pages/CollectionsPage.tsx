@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
-import { Layers, Plus, Search, Loader2, ArrowRight, FolderPlus, Check, X, Lock } from 'lucide-react'
+import {
+  Layers, Plus, Search, Loader2, ArrowRight, FolderPlus, Check, X, Lock,
+  Brain, Crown, Telescope, Languages, Landmark, Gem, MoonStar, Scale, Leaf, Ship, Wheat, BookOpen,
+  type LucideIcon,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -19,7 +23,7 @@ const stagger: Variants = { hidden: {}, visible: { transition: { staggerChildren
 
 interface Theme {
   title: string
-  icon: string
+  icon: LucideIcon
   group: 'philosophy' | 'history' | 'science' | 'arts' | 'languages'
   to: string
   description: string
@@ -28,18 +32,18 @@ interface Theme {
 
 // Editorial reading paths into the archive. Each links to a category or a search.
 const THEMES: Theme[] = [
-  { title: 'African Philosophy & Ethics', icon: '🧠', group: 'philosophy', to: '/discover?category=philosophy', description: 'Ubuntu, Maat, Ujamaa and the moral and epistemological traditions of African thought.', accentColor: 'from-emerald-600/20 to-emerald-900/30' },
-  { title: 'Empires & Kingdoms', icon: '👑', group: 'history', to: '/discover?category=history', description: 'Mali, Songhay, Kush, Aksum, Great Zimbabwe and the states that shaped the continent.', accentColor: 'from-amber-600/20 to-amber-900/30' },
-  { title: 'Indigenous Science & Astronomy', icon: '🔭', group: 'science', to: '/discover?category=science', description: 'Astronomy, mathematics, metallurgy and the scholarly traditions behind them.', accentColor: 'from-blue-600/20 to-blue-900/30' },
-  { title: 'Languages, Scripts & Oral Tradition', icon: '🗣️', group: 'languages', to: '/discover?category=languages', description: 'Griots and epics, Ajami and Ge’ez, Nsibidi and the languages that carry memory.', accentColor: 'from-purple-600/20 to-purple-900/30' },
-  { title: 'Architecture & Monuments', icon: '🏛️', group: 'history', to: '/discover?q=architecture', description: 'Nubian pyramids, the stelae of Aksum, Djenné’s mosque and the walls of Great Zimbabwe.', accentColor: 'from-rose-600/20 to-rose-900/30' },
-  { title: 'Sculpture & Metalwork', icon: '🏺', group: 'arts', to: '/discover?category=art-culture', description: 'Benin brass, Nok terracotta, Ife heads and royal regalia.', accentColor: 'from-orange-600/20 to-orange-900/30' },
-  { title: 'Cosmology & Spiritual Traditions', icon: '🌙', group: 'philosophy', to: '/discover?q=cosmology', description: 'Ifá, Akan cosmologies and the ways communities have understood the world.', accentColor: 'from-teal-600/20 to-teal-900/30' },
-  { title: 'Pan-African Political Thought', icon: '⚖️', group: 'history', to: '/discover?q=Pan-African', description: 'Nkrumah, Fanon, Biko and the movements for independence and unity.', accentColor: 'from-red-600/20 to-red-900/30' },
-  { title: 'Medicine & Healing', icon: '🌿', group: 'science', to: '/discover?q=medicine', description: 'Ethnobotany, healing practices and the knowledge of plants.', accentColor: 'from-green-600/20 to-green-900/30' },
-  { title: 'Trade Routes & Economies', icon: '🐪', group: 'history', to: '/discover?q=trade', description: 'Trans-Saharan caravans, the Swahili coast and Indian Ocean commerce.', accentColor: 'from-yellow-600/20 to-yellow-900/30' },
-  { title: 'Agriculture & Food', icon: '🌾', group: 'science', to: '/discover?q=agriculture', description: 'The domestication of sorghum, millet and yams, and the farming systems around them.', accentColor: 'from-lime-600/20 to-lime-900/30' },
-  { title: 'Literature & Poetry', icon: '📖', group: 'languages', to: '/discover?q=literature', description: 'From classical manuscripts to Achebe, Soyinka and Ngũgĩ.', accentColor: 'from-indigo-600/20 to-indigo-900/30' },
+  { title: 'African Philosophy & Ethics', icon: Brain, group: 'philosophy', to: '/discover?category=philosophy', description: 'Ubuntu, Maat, Ujamaa and the moral and epistemological traditions of African thought.', accentColor: 'from-emerald-600/20 to-emerald-900/30' },
+  { title: 'Empires & Kingdoms', icon: Crown, group: 'history', to: '/discover?category=history', description: 'Mali, Songhay, Kush, Aksum, Great Zimbabwe and the states that shaped the continent.', accentColor: 'from-amber-600/20 to-amber-900/30' },
+  { title: 'Indigenous Science & Astronomy', icon: Telescope, group: 'science', to: '/discover?category=science', description: 'Astronomy, mathematics, metallurgy and the scholarly traditions behind them.', accentColor: 'from-blue-600/20 to-blue-900/30' },
+  { title: 'Languages, Scripts & Oral Tradition', icon: Languages, group: 'languages', to: '/discover?category=languages', description: 'Griots and epics, Ajami and Ge’ez, Nsibidi and the languages that carry memory.', accentColor: 'from-purple-600/20 to-purple-900/30' },
+  { title: 'Architecture & Monuments', icon: Landmark, group: 'history', to: '/discover?q=architecture', description: 'Nubian pyramids, the stelae of Aksum, Djenné’s mosque and the walls of Great Zimbabwe.', accentColor: 'from-rose-600/20 to-rose-900/30' },
+  { title: 'Sculpture & Metalwork', icon: Gem, group: 'arts', to: '/discover?category=art-culture', description: 'Benin brass, Nok terracotta, Ife heads and royal regalia.', accentColor: 'from-orange-600/20 to-orange-900/30' },
+  { title: 'Cosmology & Spiritual Traditions', icon: MoonStar, group: 'philosophy', to: '/discover?q=cosmology', description: 'Ifá, Akan cosmologies and the ways communities have understood the world.', accentColor: 'from-teal-600/20 to-teal-900/30' },
+  { title: 'Pan-African Political Thought', icon: Scale, group: 'history', to: '/discover?q=Pan-African', description: 'Nkrumah, Fanon, Biko and the movements for independence and unity.', accentColor: 'from-red-600/20 to-red-900/30' },
+  { title: 'Medicine & Healing', icon: Leaf, group: 'science', to: '/discover?q=medicine', description: 'Ethnobotany, healing practices and the knowledge of plants.', accentColor: 'from-green-600/20 to-green-900/30' },
+  { title: 'Trade Routes & Economies', icon: Ship, group: 'history', to: '/discover?q=trade', description: 'Trans-Saharan caravans, the Swahili coast and Indian Ocean commerce.', accentColor: 'from-yellow-600/20 to-yellow-900/30' },
+  { title: 'Agriculture & Food', icon: Wheat, group: 'science', to: '/discover?q=agriculture', description: 'The domestication of sorghum, millet and yams, and the farming systems around them.', accentColor: 'from-lime-600/20 to-lime-900/30' },
+  { title: 'Literature & Poetry', icon: BookOpen, group: 'languages', to: '/discover?q=literature', description: 'From classical manuscripts to Achebe, Soyinka and Ngũgĩ.', accentColor: 'from-indigo-600/20 to-indigo-900/30' },
 ]
 
 const GROUP_TABS = [
@@ -242,8 +246,8 @@ export default function CollectionsPage() {
                   >
                     <div className={cn('absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br opacity-50 blur-2xl group-hover:scale-125 transition-transform duration-500 pointer-events-none', theme.accentColor)} aria-hidden="true" />
                     <div>
-                      <div className="w-12 h-12 rounded-xl bg-sand-100 dark:bg-dark-card border border-sand-200 dark:border-dark-border flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform duration-300" aria-hidden="true">
-                        {theme.icon}
+                      <div className="w-12 h-12 rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-accent-300 border border-sand-200 dark:border-dark-border flex items-center justify-center  mb-4 group-hover:scale-110 transition-transform duration-300" aria-hidden="true">
+                        <theme.icon className="w-5 h-5" strokeWidth={1.75} />
                       </div>
                       <h3 className="font-serif font-bold text-lg text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors mb-2">{theme.title}</h3>
                       <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">{theme.description}</p>

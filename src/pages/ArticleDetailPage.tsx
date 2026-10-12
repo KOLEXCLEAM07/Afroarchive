@@ -12,7 +12,13 @@ import { useBookmarks } from '@/hooks/useBookmarks'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { cn, formatDate, formatNumber, getAvatarFallback, shareArticle } from '@/lib/utils'
 import { isUuid } from '@/lib/query'
-import { KNOWLEDGE_SELECT, knowledgeItemToArticle, licenseLabel, type KnowledgeRecord } from '@/lib/knowledge'
+import { KNOWLEDGE_SELECT, knowledgeItemToArticle, licenseLabel, recordModel3d, type KnowledgeRecord } from '@/lib/knowledge'
+import Model3DViewer from '@/components/museum/Model3DViewer'
+
+function countryDisplay(value: string): string {
+  if (!/^[A-Z]{2}$/.test(value)) return value
+  try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(value) || value } catch { return value }
+}
 import { FOUNDATIONAL_ARTICLES } from '@/data/articlesData'
 import ArticleCard from '@/components/articles/ArticleCard'
 import ArticleBody from '@/components/articles/ArticleBody'
@@ -280,7 +286,7 @@ export default function ArticleDetailPage() {
             )}
             {visible.country && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <MapPin className="w-3 h-3 text-primary-500" />{visible.country}
+                <MapPin className="w-3 h-3 text-primary-500" />{countryDisplay(visible.country)}
               </span>
             )}
           </div>
@@ -309,7 +315,7 @@ export default function ArticleDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent-500" />{visible.reading_time || 1} min read</span>
+              {origin !== 'record' && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent-500" />{visible.reading_time || 1} min read</span>}
               {visible.published_at && (
                 <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-primary-500" />{formatDate(visible.published_at)}</span>
               )}
@@ -317,11 +323,28 @@ export default function ArticleDetailPage() {
           </div>
         </motion.header>
 
-        {visible.cover_image && (
+        {record && recordModel3d(record) && (
+          <div className="max-w-4xl mx-auto mb-12 dark">
+            <Model3DViewer
+              model={{ ...recordModel3d(record)!, viewerUrl: record.source_url }}
+              title={visible.title}
+              credit={record.attribution}
+            />
+          </div>
+        )}
+
+        {visible.cover_image && !(record && recordModel3d(record)) && (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }} className="max-w-4xl mx-auto mb-12">
-            <div className="relative rounded-3xl overflow-hidden border border-sand-200 dark:border-dark-border shadow-museum aspect-[16/9] sm:aspect-[21/9] bg-sand-200 dark:bg-dark-card">
-              <img src={visible.cover_image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            </div>
+            <figure>
+              <div className="relative rounded-3xl overflow-hidden border border-sand-200 dark:border-dark-border shadow-museum aspect-[16/9] sm:aspect-[21/9] bg-sand-200 dark:bg-dark-card">
+                <img src={visible.cover_image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+              {(visible.cover_credit || (origin === 'record' && record?.attribution)) && (
+                <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-right">
+                  {visible.cover_credit || record?.attribution}
+                </figcaption>
+              )}
+            </figure>
           </motion.div>
         )}
 

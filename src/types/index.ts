@@ -61,6 +61,12 @@ export interface Article {
   excerpt: string | null
   content: string
   cover_image: string | null
+  /** Credit line for the cover image (photographer, licence). */
+  cover_credit?: string | null
+  /** Set for ingested archive records shown through the article UI. */
+  is_record?: boolean
+  /** The record has an interactive 3D scan. */
+  has_3d?: boolean
   status: ArticleStatus
   category_id: string | null
   reading_time: number

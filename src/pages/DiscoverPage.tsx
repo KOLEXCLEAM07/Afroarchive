@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
 import { Search, X, SlidersHorizontal, TrendingUp, Clock, Star } from 'lucide-react'
@@ -43,6 +43,17 @@ const FALLBACK_CATEGORIES = [
   { slug: 'research', name: 'Scholarly Research' },
 ]
 
+const RECORD_PAGE = 24
+
+const RECORD_TYPES: Array<{ value: string; label: string; types: string[] }> = [
+  { value: '',        label: 'All records',       types: [] },
+  { value: 'objects', label: 'Objects',           types: ['cultural_artifact', 'manuscript'] },
+  { value: 'places',  label: 'Places',            types: ['place'] },
+  { value: 'people',  label: 'People',            types: ['person'] },
+  { value: 'states',  label: 'States & kingdoms', types: ['kingdom_or_state'] },
+  { value: 'works',   label: 'Scholarly works',   types: ['work'] },
+]
+
 const COUNTRIES = [
   'Nigeria', 'Ghana', 'Egypt', 'Ethiopia', 'Kenya', 'South Africa',
   'Mali', 'Senegal', 'Zimbabwe', 'Morocco', 'Tanzania', 'Uganda',
@@ -65,10 +76,14 @@ export default function DiscoverPage() {
   const sort     = (searchParams.get('sort') as SortKey) || 'newest'
   const kind     = (searchParams.get('type') as Kind) || 'all'
   const language = searchParams.get('lang') || ''
+  const recordType = searchParams.get('rt') || ''
 
   const [queryInput, setQueryInput] = useState(query)
   const [categories, setCategories] = useState<Category[]>([])
   const [articles, setArticles] = useState<Article[]>([])
+  const [records, setRecords] = useState<Article[]>([])
+  const [recordTotal, setRecordTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
@@ -107,6 +122,26 @@ export default function DiscoverPage() {
   const activeCategory = categories.find(c => c.slug === category)
   const categoryLabel = categoryOptions.find(c => c.slug === category)?.name || category
 
+  const showRecords = kind !== 'articles' && !category && !country && !language
+
+  const fetchRecordPage = useCallback(async (page: number) => {
+    const q = query.trim()
+    const typeDef = RECORD_TYPES.find(t => t.value === recordType)
+    let req = supabase.from('knowledge_items').select(KNOWLEDGE_SELECT, { count: 'exact' }).or(NOT_FLAGGED)
+    if (typeDef && typeDef.types.length) req = req.in('knowledge_type', typeDef.types)
+    // Scholarly papers are a niche; keep them out of the default view unless asked for.
+    else req = req.neq('knowledge_type', 'work')
+    if (q) req = req.or(ilikeAny(['title', 'summary'], q))
+    const from = page * RECORD_PAGE
+    const { data, error, count } = await req.order('created_at', { ascending: false }).order('id').range(from, from + RECORD_PAGE - 1)
+    return {
+      error: !!error,
+      total: count ?? 0,
+      items: ((data ?? []) as unknown as KnowledgeRecord[]).map(knowledgeItemToArticle),
+    }
+  }, [query, recordType])
+
+  // Community articles and bundled editorial essays
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -114,7 +149,6 @@ export default function DiscoverPage() {
       setLoadError(false)
       const q = query.trim()
 
-      // Community articles
       let dbArticles: Article[] = []
       const categoryUnknown = !!category && categories.length > 0 && !activeCategory
       if (kind !== 'records' && !categoryUnknown) {
@@ -135,7 +169,6 @@ export default function DiscoverPage() {
         dbArticles = (data as Article[]) ?? []
       }
 
-      // Editorial essays bundled with the site
       const editorial = kind === 'records' ? [] : FOUNDATIONAL_ARTICLES.filter(a => {
         if (q) {
           const needle = q.toLowerCase()
@@ -147,30 +180,50 @@ export default function DiscoverPage() {
         return true
       })
 
-      // Ingested archive records (no category/country mapping yet)
-      let records: Article[] = []
-      if (kind !== 'articles' && !category && !country && !language) {
-        let req = supabase.from('knowledge_items').select(KNOWLEDGE_SELECT).or(NOT_FLAGGED)
-          .order('created_at', { ascending: false }).limit(q ? 30 : 12)
-        if (q) req = req.or(ilikeAny(['title', 'summary'], q))
-        const { data, error } = await req
-        if (error) setLoadError(true)
-        records = ((data ?? []) as unknown as KnowledgeRecord[]).map(knowledgeItemToArticle)
-      }
-
       if (cancelled) return
-      const seen = new Set<string>()
-      const combined = [...sortArticles([...dbArticles, ...editorial], sort), ...records].filter(a => {
-        if (seen.has(a.slug)) return false
-        seen.add(a.slug)
-        return true
-      })
-      setArticles(combined)
+      setArticles(sortArticles([...dbArticles, ...editorial], sort).filter(a => a.title.trim().length >= 5))
       setLoading(false)
     }
     run().catch(() => { if (!cancelled) { setLoadError(true); setLoading(false) } })
     return () => { cancelled = true }
   }, [query, category, country, language, sort, kind, categories, activeCategory])
+
+  // Imported archive records, paged
+  useEffect(() => {
+    let cancelled = false
+    setRecords([])
+    setRecordTotal(0)
+    if (!showRecords) return
+    fetchRecordPage(0)
+      .then(r => { if (cancelled) return; if (r.error) setLoadError(true); setRecords(r.items); setRecordTotal(r.total) })
+      .catch(() => { if (!cancelled) setLoadError(true) })
+    return () => { cancelled = true }
+  }, [showRecords, fetchRecordPage])
+
+  const loadMoreRecords = async () => {
+    setLoadingMore(true)
+    try {
+      const page = Math.floor(records.length / RECORD_PAGE)
+      const r = await fetchRecordPage(page)
+      setRecords(prev => [...prev, ...r.items])
+      setRecordTotal(r.total)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const items = useMemo(() => {
+    // Skip duplicate imports of the same image.
+    const seen = new Set<string>()
+    return [...articles, ...records].filter(a => {
+      const keys = [a.slug, a.is_record && a.cover_image ? a.cover_image : null].filter(Boolean) as string[]
+      if (keys.some(k => seen.has(k))) return false
+      keys.forEach(k => seen.add(k))
+      return true
+    })
+  }, [articles, records])
+  const totalResults = articles.length + recordTotal
+  const hasMoreRecords = showRecords && records.length < recordTotal
 
   const clearFilters = () => {
     setQueryInput('')
@@ -251,7 +304,7 @@ export default function DiscoverPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-y border-sand-200 dark:border-dark-border mb-6 text-sm">
           <p className="text-gray-500 dark:text-gray-400" aria-live="polite">
-            {loading ? 'Searching…' : `${articles.length} result${articles.length === 1 ? '' : 's'}`}
+            {loading ? 'Searching…' : `${totalResults.toLocaleString()} result${totalResults === 1 ? '' : 's'}`}
             {query && !loading && <span className="font-medium text-gray-800 dark:text-gray-200"> for “{query}”</span>}
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -275,6 +328,21 @@ export default function DiscoverPage() {
             </div>
           </div>
         </div>
+
+        {showRecords && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-4" role="group" aria-label="Record type">
+            {RECORD_TYPES.map(t => (
+              <button key={t.value || 'all'} type="button" aria-pressed={recordType === t.value}
+                onClick={() => updateParam('rt', t.value)}
+                className={cn('whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  recordType === t.value
+                    ? 'bg-accent-400/15 text-accent-700 border-accent-400/50 dark:text-accent-300'
+                    : 'text-gray-600 dark:text-gray-300 border-sand-200 dark:border-dark-border hover:border-primary-400')}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -338,7 +406,7 @@ export default function DiscoverPage() {
                   </div>
                 ))}
               </div>
-            ) : articles.length === 0 ? (
+            ) : items.length === 0 ? (
               <div className="text-center py-20 card p-8">
                 <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h2 className="heading-md text-gray-800 dark:text-gray-200 mb-2">Nothing found</h2>
@@ -349,12 +417,19 @@ export default function DiscoverPage() {
               </div>
             ) : (
               <motion.div initial="hidden" animate="visible" variants={stagger} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {articles.map(article => (
+                {items.map(article => (
                   <motion.div key={article.id} variants={fadeUp}>
                     <ArticleCard article={article} variant="default" className="h-full" />
                   </motion.div>
                 ))}
               </motion.div>
+            )}
+            {!loading && hasMoreRecords && (
+              <div className="mt-10 text-center">
+                <button type="button" onClick={loadMoreRecords} disabled={loadingMore} className="btn btn-outline btn-md gap-2">
+                  {loadingMore ? 'Loading…' : `Show more (${(recordTotal - records.length).toLocaleString()} remaining)`}
+                </button>
+              </div>
             )}
           </div>
         </div>

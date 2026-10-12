@@ -72,15 +72,6 @@ export const AFRICAN_SCHOLARLY_TOPIC_QUERIES: Record<string, string> = {
   scholars: '"African scholars" OR "African intellectuals" OR "Pan-African thinkers"',
 };
 
-// Major African country codes for institution identification
-const AFRICAN_COUNTRY_CODES = new Set([
-  'DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CV', 'CM', 'CF', 'TD', 'KM', 'CG', 'CD',
-  'DJ', 'EG', 'GQ', 'ER', 'SZ', 'ET', 'GA', 'GM', 'GH', 'GN', 'GW', 'CI', 'KE',
-  'LS', 'LR', 'LY', 'MG', 'MW', 'ML', 'MR', 'MU', 'MA', 'MZ', 'NA', 'NE', 'NG',
-  'RW', 'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'TZ', 'TG', 'TN', 'UG',
-  'ZM', 'ZW'
-]);
-
 export class OpenAlexImporter extends BaseImporter<OpenAlexRawWork> {
   readonly name = 'OpenAlex Importer';
   readonly sourceSlug = 'openalex';
@@ -214,16 +205,17 @@ export class OpenAlexImporter extends BaseImporter<OpenAlexRawWork> {
     const conceptTags = (work.concepts || []).map((c) => c.display_name);
 
     // African relevance evaluation: verify content relates to African scholarship
+    // Author affiliation alone is not enough for scholarly works (see relevance.ts).
     const relevanceAssessment = AfricanRelevanceClassifier.assess(
       title,
-      abstractText || title,
+      abstractText,
       countries,
-      conceptTags
+      conceptTags,
+      '',
+      { knowledgeType: 'work' }
     );
 
-    const hasAfricanInstitution = countries.some((c) => AFRICAN_COUNTRY_CODES.has(c));
-
-    if (!relevanceAssessment.isRelevant && !hasAfricanInstitution) {
+    if (!relevanceAssessment.isRelevant) {
       return null;
     }
 

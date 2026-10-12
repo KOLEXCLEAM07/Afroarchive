@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { Search, Compass, Layers } from 'lucide-react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { Search, Compass, Layers, Box } from 'lucide-react'
 import { CategoryFilter, RegionFilter, ArtifactItem } from '../../types/archiveTypes'
 import { ARTIFACTS_DATA } from '../../data/archiveData'
 import { ArtifactCard } from './ArtifactCard'
 import { supabase } from '../../lib/supabase'
+import { ilikeAny } from '../../lib/query'
+import { cleanRecordText, cleanRecordTitle, usefulPeriod } from '../../lib/knowledge'
 
 export interface ArchiveExplorerProps {
   onInspectArtifact: (artifact: ArtifactItem) => void
@@ -50,8 +52,21 @@ interface KnowledgeRow {
   source_url: string | null
   original_url: string | null
   sources: { name: string | null; slug: string | null } | null
-  media: { file_url: string | null; thumbnail_url: string | null }[] | null
+  media: { file_url: string | null; thumbnail_url: string | null; media_type?: string | null }[] | null
 }
+
+// Which kinds of imported records each museum category shows. Scholarly works are bibliographic
+// records, not objects, so they stay out of the gallery; "science" is covered by the curated set.
+const LIVE_TYPES: Record<CategoryFilter, string[] | null> = {
+  all: ['cultural_artifact', 'manuscript', 'place', 'kingdom_or_state', 'culture', 'person'],
+  manuscripts: ['manuscript'],
+  civilizations: ['kingdom_or_state', 'culture', 'person'],
+  science: null,
+  philosophy: null,
+  architecture: ['place'],
+  arts: ['cultural_artifact'],
+}
+const LIVE_PAGE = 24
 
 const looksLikeImage = (url: string) => {
   try {
@@ -76,7 +91,9 @@ function mapKnowledgeRow(item: KnowledgeRow): ArtifactItem {
   else if (item.knowledge_type === 'place') cat = 'architecture'
   else if (item.knowledge_type === 'work') cat = 'science'
 
-  const media = item.media?.[0]
+  // The preview image comes from a photo if there is one; a 3D scan only contributes its poster.
+  const model = item.media?.find((m) => m.media_type === '3d_model' && m.file_url)
+  const media = item.media?.find((m) => m.media_type !== '3d_model') ?? model
   const imageSrc =
     media?.thumbnail_url ||
     media?.file_url ||
@@ -86,25 +103,26 @@ function mapKnowledgeRow(item: KnowledgeRow): ArtifactItem {
   const region = countryCode ? REGION_BY_COUNTRY[countryCode] : undefined
   const countryName = countryCode ? countryNameFor(countryCode) : undefined
   const sourceName = item.sources?.name || undefined
-  const period = item.time_period || 'Date not recorded'
+  // Imported "periods" are often upload years or noise; only keep historical ones.
+  const period = usefulPeriod(item.time_period) ?? ''
   const sourceUrl = item.source_url || item.original_url
 
   // Items without a known region use 'all' so they only appear under "All regions".
   return {
     id: item.id,
-    catalogNumber: sourceName ? sourceName.toUpperCase() : 'ARCHIVE RECORD',
-    title: item.title,
+    catalogNumber: sourceName ?? 'Archive record',
+    title: cleanRecordTitle(item.title),
     subtitle: sourceName ? `Source: ${sourceName}` : undefined,
     category: cat,
     region: region ?? 'all',
-    regionLabel: region ? REGION_LABELS[region] : countryName ? countryName : 'Region not recorded',
+    regionLabel: region ? REGION_LABELS[region] : countryName ?? '',
     era: period,
     dateRange: period,
-    originLocation: countryName || 'Location not recorded',
+    originLocation: countryName ?? '',
     repository: sourceName || 'Source not recorded',
     imageSrc: imageSrc || undefined,
-    summary: item.summary || item.title,
-    fullDescription: item.content || item.summary || item.title,
+    summary: cleanRecordText(item.summary) || cleanRecordTitle(item.title),
+    fullDescription: cleanRecordText(item.content || item.summary) || cleanRecordTitle(item.title),
     keyInsights: [
       item.attribution ? `Attribution: ${item.attribution}` : null,
       item.license_type ? `Licence: ${item.license_type}` : null,
@@ -112,6 +130,9 @@ function mapKnowledgeRow(item: KnowledgeRow): ArtifactItem {
     primarySources: sourceUrl ? [sourceUrl] : [],
     isFeatured: false,
     recordSlug: item.slug || undefined,
+    model3d: model
+      ? { embedUrl: model.file_url as string, poster: model.thumbnail_url, viewerUrl: item.source_url, credit: item.attribution }
+      : undefined,
   }
 }
 
@@ -125,37 +146,72 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>(initialRegion)
   const [searchQuery, setSearchQuery] = useState('')
   const [liveArtifacts, setLiveArtifacts] = useState<ArtifactItem[]>([])
+  const [liveTotal, setLiveTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [only3d, setOnly3d] = useState(false)
 
   useEffect(() => {
     setSelectedRegion(initialRegion)
   }, [initialRegion])
 
   useEffect(() => {
-    let cancelled = false
-    async function loadLiveArtifacts() {
-      try {
-        const { data, error } = await supabase
-          .from('knowledge_items')
-          .select('*, sources(name, slug), media(file_url, thumbnail_url)')
-          .not('summary', 'is', null)
-          .or('verification_status.is.null,verification_status.neq.flagged')
-          .order('created_at', { ascending: false })
-          .limit(20)
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 350)
+    return () => clearTimeout(t)
+  }, [searchQuery])
 
-        if (!cancelled && !error && data && data.length > 0) {
-          setLiveArtifacts((data as unknown as KnowledgeRow[]).map(mapKnowledgeRow))
-        }
-      } catch (err) {
-        console.warn('Could not load archive records:', err)
-      }
-    }
-    loadLiveArtifacts()
+  const fetchLivePage = useCallback(async (page: number) => {
+    const types = LIVE_TYPES[selectedCategory]
+    if (!types) return { items: [] as ArtifactItem[], total: 0 }
+    let req = supabase
+      .from('knowledge_items')
+      .select('*, sources(name, slug), media!inner(file_url, thumbnail_url, media_type)', { count: 'exact' })
+      .in('knowledge_type', types)
+      .or('verification_status.is.null,verification_status.neq.flagged')
+    if (selectedRegion !== 'all') req = req.overlaps('country_codes', REGION_COUNTRIES[selectedRegion])
+    if (only3d) req = req.eq('media.media_type', '3d_model')
+    const q = debouncedQuery.trim()
+    if (q) req = req.or(ilikeAny(['title', 'summary'], q))
+    const from = page * LIVE_PAGE
+    const { data, error, count } = await req.order('created_at', { ascending: false }).order('id').range(from, from + LIVE_PAGE - 1)
+    if (error) throw error
+    return { items: ((data ?? []) as unknown as KnowledgeRow[]).map(mapKnowledgeRow), total: count ?? 0 }
+  }, [selectedCategory, selectedRegion, debouncedQuery, only3d])
+
+  // Reload from the first page whenever a filter changes.
+  useEffect(() => {
+    let cancelled = false
+    setLiveArtifacts([])
+    setLiveTotal(0)
+    fetchLivePage(0)
+      .then(({ items, total }) => {
+        if (cancelled) return
+        setLiveArtifacts(items)
+        setLiveTotal(total)
+      })
+      .catch((err) => console.warn('Could not load archive records:', err))
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [fetchLivePage])
 
-  const combinedArtifacts = useMemo(() => [...liveArtifacts, ...ARTIFACTS_DATA], [liveArtifacts])
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const { items, total } = await fetchLivePage(Math.floor(liveArtifacts.length / LIVE_PAGE))
+      setLiveArtifacts((prev) => {
+        // The same photograph is sometimes imported twice under different titles.
+        const seen = new Set(prev.map((a) => a.imageSrc || a.title.toLowerCase()))
+        return [...prev, ...items.filter((a) => !seen.has(a.imageSrc || a.title.toLowerCase()))]
+      })
+      setLiveTotal(total)
+    } catch (err) {
+      console.warn('Could not load more records:', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
 
   const categories: { key: CategoryFilter; label: string }[] = [
     { key: 'all', label: 'All collections' },
@@ -175,9 +231,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
     { key: 'southern', label: 'Southern Africa' },
   ]
 
-  const filteredArtifacts = useMemo(() => {
+  const filteredStatic = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    return combinedArtifacts.filter((item) => {
+    if (only3d) return []
+    return ARTIFACTS_DATA.filter((item) => {
       const matchCategory = selectedCategory === 'all' || item.category === selectedCategory
       const matchRegion = selectedRegion === 'all' || item.region === selectedRegion
       const matchSearch =
@@ -189,7 +246,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
 
       return matchCategory && matchRegion && matchSearch
     })
-  }, [selectedCategory, selectedRegion, searchQuery, combinedArtifacts])
+  }, [selectedCategory, selectedRegion, searchQuery, only3d])
+
+  const filteredArtifacts = useMemo(() => [...filteredStatic, ...liveArtifacts], [filteredStatic, liveArtifacts])
+  const totalEntries = ARTIFACTS_DATA.length + liveTotal
 
   return (
     <section
@@ -221,10 +281,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
           <div className="flex flex-col items-start md:items-end space-y-1.5 text-xs text-ivory-400">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-accent-400" aria-hidden="true" />
-              <span>Showing {filteredArtifacts.length} of {combinedArtifacts.length} entries</span>
+              <span>Showing {filteredArtifacts.length.toLocaleString()} of {totalEntries.toLocaleString()} entries</span>
             </div>
-            {liveArtifacts.length > 0 && (
-              <span>Includes {liveArtifacts.length} recent records from open collections</span>
+            {liveTotal > 0 && (
+              <span>Includes {liveTotal.toLocaleString()} records from open museum and heritage collections</span>
             )}
           </div>
         </div>
@@ -250,6 +310,19 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
 
             {/* Region Filter Pills */}
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOnly3d((v) => !v)}
+                aria-pressed={only3d}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  only3d
+                    ? 'border-accent-400/50 bg-accent-400/15 text-accent-300'
+                    : 'border-white/10 bg-white/5 text-ivory-300 hover:border-white/25 hover:text-white'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5" aria-hidden="true" /> 3D models
+              </button>
+              <span className="hidden sm:inline h-4 w-px bg-white/10" aria-hidden="true" />
               <span className="text-xs font-semibold text-ivory-400 mr-1 hidden sm:inline">
                 Region:
               </span>
@@ -292,16 +365,25 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
 
         {/* Artifact Grid */}
         {filteredArtifacts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredArtifacts.map((item) => (
-              <ArtifactCard
-                key={item.id}
-                artifact={item}
-                onInspect={onInspectArtifact}
-                isBookmarked={isBookmarked ? isBookmarked(item.id) : false}
-                onToggleBookmark={onToggleBookmark}
-              />
-            ))}
+          <div className="space-y-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredArtifacts.map((item) => (
+                <ArtifactCard
+                  key={item.id}
+                  artifact={item}
+                  onInspect={onInspectArtifact}
+                  isBookmarked={isBookmarked ? isBookmarked(item.id) : false}
+                  onToggleBookmark={onToggleBookmark}
+                />
+              ))}
+            </div>
+            {liveArtifacts.length < liveTotal && (
+              <div className="text-center">
+                <button type="button" onClick={loadMore} disabled={loadingMore} className="btn btn-outline btn-md">
+                  {loadingMore ? 'Loading…' : `Show more (${(liveTotal - liveArtifacts.length).toLocaleString()} remaining)`}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="card rounded-2xl p-12 md:p-16 text-center space-y-4">
@@ -314,6 +396,7 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
               onClick={() => {
                 setSelectedCategory('all')
                 setSelectedRegion('all')
+                setOnly3d(false)
                 setSearchQuery('')
               }}
               type="button"

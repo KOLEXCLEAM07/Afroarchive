@@ -29,6 +29,8 @@ export interface ArtifactItem {
   isFeatured?: boolean
   /** Slug of the database record this item was loaded from; links to /article/<slug>. */
   recordSlug?: string
+  /** Interactive 3D scan (embedded from Sketchfab). */
+  model3d?: { embedUrl: string; poster?: string | null; viewerUrl?: string | null; credit?: string | null }
 }
 
 export interface TimelineEra {
