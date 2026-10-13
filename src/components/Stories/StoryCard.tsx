@@ -16,8 +16,19 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   onToggleBookmark,
 }) => {
   return (
-    <article className="card-hover rounded-2xl flex flex-col justify-between p-6 md:p-7 overflow-hidden group">
-      <div className="space-y-4 relative z-10">
+    <article className="card-hover rounded-2xl flex flex-col justify-between overflow-hidden group">
+      {story.imageSrc && (
+        <figure className="relative aspect-[16/9] w-full overflow-hidden border-b border-white/10 bg-dark-card">
+          <img
+            src={story.imageSrc}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        </figure>
+      )}
+      <div className="p-6 md:p-7 space-y-4 relative z-10">
         {/* Card Header Labels */}
         <div className="flex items-center justify-between">
           <span className="badge badge-accent">
@@ -71,22 +82,25 @@ export const StoryCard: React.FC<StoryCardProps> = ({
         <p className="text-sm text-ivory-400 leading-relaxed line-clamp-3">
           {story.excerpt}
         </p>
-      </div>
+        {story.imageCaption && (
+          <p className="text-[11px] leading-relaxed text-ivory-500">{story.imageCaption}</p>
+        )}
 
-      {/* Footer Info & Action */}
-      <div className="pt-4 mt-6 border-t border-white/10 flex items-center justify-between gap-3 relative z-10">
-        <span className="text-xs text-ivory-400 truncate">
-          {story.region}
-        </span>
+        {/* Footer Info & Action */}
+        <div className="pt-4 mt-2 border-t border-white/10 flex items-center justify-between gap-3 relative z-10">
+          <span className="text-xs text-ivory-400 truncate">
+            {story.region}
+          </span>
 
-        <button
-          onClick={() => onRead(story)}
-          type="button"
-          className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
-        >
-          <span>Read philosophy</span>
-          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" aria-hidden="true" />
-        </button>
+          <button
+            onClick={() => onRead(story)}
+            type="button"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg text-sm font-semibold text-accent-300 hover:text-accent-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 px-1.5 py-1"
+          >
+            <span>Read philosophy</span>
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </article>
   )

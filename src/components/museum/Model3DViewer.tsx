@@ -46,7 +46,7 @@ export default function Model3DViewer({ model, title, credit, className }: Props
   if (!base || !src) return null
 
   return (
-    <figure className={className}>
+    <figure className={cn('shrink-0', className)}>
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-dark-card">
         {active ? (
           <iframe

@@ -95,7 +95,7 @@ export const ArtifactDetailDrawer: React.FC<ArtifactDetailDrawerProps> = ({
         {artifact.model3d ? (
           <Model3DViewer model={artifact.model3d} title={artifact.title} credit={artifact.model3d.credit} />
         ) : artifact.imageSrc ? (
-          <figure className="w-full overflow-hidden rounded-2xl border border-white/10 bg-dark-card">
+          <figure className="w-full shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-dark-card">
             <img
               src={artifact.imageSrc}
               alt={artifact.title}

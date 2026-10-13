@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   Search, Menu, X, Sun, Moon, BookOpen,
-  User, LogOut, Settings, ChevronDown, Feather, Landmark, ShieldCheck,
+  User, LogOut, Settings, ChevronDown, Feather, Landmark, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -18,7 +18,7 @@ const NAV_LINKS = [
 ]
 
 export default function Navbar() {
-  const { user, profile, signOut, isModerator } = useAuth()
+  const { user, profile, signOut, isAdmin, isModerator } = useAuth()
   const { isDark, toggleTheme }              = useTheme()
   const navigate                             = useNavigate()
   const location                             = useLocation()
@@ -243,6 +243,9 @@ export default function Navbar() {
                         <ProfileMenuItem to={profile?.username ? `/profile/${profile.username}` : '/profile'} icon={<User className="w-4 h-4" />} label="My Profile" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/write"    icon={<Feather className="w-4 h-4" />} label="Write Article" onClick={() => setProfileOpen(false)} />
                         <ProfileMenuItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings"      onClick={() => setProfileOpen(false)} />
+                        {isAdmin && (
+                          <ProfileMenuItem to="/admin" icon={<LayoutDashboard className="w-4 h-4" />} label="Admin dashboard" onClick={() => setProfileOpen(false)} />
+                        )}
                         {isModerator && (
                           <ProfileMenuItem to="/moderation" icon={<ShieldCheck className="w-4 h-4" />} label="Moderation" onClick={() => setProfileOpen(false)} />
                         )}

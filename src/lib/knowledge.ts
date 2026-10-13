@@ -65,8 +65,36 @@ export function cleanRecordTitle(raw: string): string {
 /** Strips wiki link prefixes from imported descriptions ("w:Great Mosque", "en:Djenné"). */
 export function cleanRecordText(raw: string | null | undefined): string | null {
   if (!raw) return null
-  const t = raw.replace(/(^|[\s(,])(?:w|en|fr|commons|wikipedia):(?=\S)/gi, '$1').replace(/\s{2,}/g, ' ').trim()
+  const t = raw
+    // Providers occasionally include HTML fragments in otherwise plain descriptions.
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/(^|[\s(,])(?:w|en|fr|commons|wikipedia):(?=\S)/gi, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
   return t || null
+}
+
+/**
+ * Creates a card-friendly description while preserving the provider's full text
+ * for the record detail page. Imported media descriptions often append licence
+ * instructions that are useful as metadata but poor homepage copy.
+ */
+export function recordExcerpt(raw: string | null | undefined, maxLength = 260): string | null {
+  const cleaned = cleanRecordText(raw)
+  if (!cleaned) return null
+
+  const summary = cleaned
+    .split(/\b(?:permission to use|please check (?:the )?licen[cs]e|this (?:image|photo|file) is (?:available|licensed)|for attribution|copyright notice)\b/i)[0]
+    .trim()
+
+  if (!summary) return null
+  if (summary.length <= maxLength) return summary
+
+  const shortened = summary.slice(0, maxLength + 1)
+  const sentenceEnd = Math.max(shortened.lastIndexOf('. '), shortened.lastIndexOf('! '), shortened.lastIndexOf('? '))
+  const wordEnd = shortened.lastIndexOf(' ')
+  const end = sentenceEnd >= Math.floor(maxLength * 0.55) ? sentenceEnd + 1 : wordEnd
+  return `${summary.slice(0, Math.max(1, end)).trimEnd()}…`
 }
 
 /** Keeps period strings that describe history ("1100–1450 CE", "16th century"); drops upload years and noise. */
@@ -137,7 +165,7 @@ export function knowledgeItemToArticle(item: KnowledgeRecord): Article {
     author_id: author.id,
     title: cleanRecordTitle(item.title),
     slug: item.slug || item.id,
-    excerpt: cleanRecordText(item.summary) || (item.content ? cleanRecordText(item.content.slice(0, 180).trimEnd() + '…') : null),
+    excerpt: recordExcerpt(item.summary) || recordExcerpt(item.content),
     content: cleanRecordText(item.content || item.summary) || '',
     cover_image: recordImage(item),
     status: 'published',

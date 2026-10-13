@@ -16,6 +16,7 @@ const AtlasPage = lazy(() => import('./pages/AtlasPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const GlossaryPage = lazy(() => import('./pages/GlossaryPage'))
 const ModerationPage = lazy(() => import('./pages/ModerationPage'))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const SignupPage = lazy(() => import('./pages/auth/SignupPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
@@ -64,6 +65,7 @@ export function App() {
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/glossary" element={<GlossaryPage />} />
             <Route path="/moderation" element={<ModerationPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/exhibition" element={<Navigate to="/museum" replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

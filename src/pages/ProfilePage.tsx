@@ -12,13 +12,13 @@ import { supabase } from '@/lib/supabase'
 import { useBookmarks, type BookmarkEntry } from '@/hooks/useBookmarks'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import ImageUpload from '@/components/ui/ImageUpload'
+import ProfileTabNavigation from '@/components/profile/ProfileTabNavigation'
+import { useProfileTabs } from '@/components/profile/useProfileTabs'
 import { ARTICLE_LANGUAGES } from '@/lib/languages'
 import { normalizeUrl } from '@/lib/query'
 import { cn, formatDate, formatNumber, getAvatarFallback, getAvatarColor, uniqueSlug, calculateReadingTime } from '@/lib/utils'
 import type { Profile, Article, Category } from '@/types'
 import toast from 'react-hot-toast'
-
-type ProfileTab = 'articles' | 'write' | 'saved' | 'settings'
 
 const fadeUp: Variants = {
   hidden:  { opacity: 0, y: 30 },
@@ -36,9 +36,7 @@ export default function ProfilePage() {
   const location = useLocation()
   const { bookmarks, removeBookmark } = useBookmarks()
 
-  const queryTab = new URLSearchParams(location.search).get('tab') as ProfileTab | null
-  const isWriteRoute = location.pathname === '/write'
-  const [activeTab, setActiveTab] = useState<ProfileTab>(isWriteRoute ? 'write' : queryTab || 'articles')
+  const { activeTab, setActiveTab } = useProfileTabs(location)
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -78,11 +76,6 @@ export default function ProfilePage() {
     supabase.from('categories').select('*').order('name')
       .then(({ data }) => { if (data) setCategories(data as Category[]) })
   }, [])
-
-  useEffect(() => {
-    if (location.pathname === '/write') setActiveTab('write')
-    else if (queryTab) setActiveTab(queryTab)
-  }, [location.pathname, queryTab])
 
   useEffect(() => {
     // Wait for the session to be restored before deciding the visitor is signed out.
@@ -419,25 +412,17 @@ export default function ProfilePage() {
 
       {/* ─── Tabs ────────────────────────────────────────────── */}
       <div className="container-app">
-        <div className="mt-8 border-b border-sand-200 dark:border-dark-border flex items-center gap-6 overflow-x-auto no-scrollbar">
-          {[
-            { key: 'articles' as const, icon: BookOpen, label: `Articles (${articles.length})` },
-            ...(isOwnProfile ? [
-              { key: 'write' as const, icon: Feather, label: editingArticleId ? 'Edit Article' : 'Write Article' },
-              { key: 'saved' as const, icon: Bookmark, label: `Saved Heritage (${bookmarks.length})` },
-              { key: 'settings' as const, icon: Edit3, label: 'Edit Profile' },
-            ] : []),
-          ].map(tab => (
-            <button key={tab.key} onClick={() => { if (tab.key === 'write') setEditingArticleId(null); setActiveTab(tab.key) }} type="button"
-              className={cn('flex items-center gap-2 py-3 border-b-2 text-sm font-medium transition-colors whitespace-nowrap',
-                activeTab === tab.key
-                  ? 'border-primary-500 text-primary-600 dark:text-accent-400 dark:border-accent-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              )}>
-              <tab.icon className="w-4 h-4" /><span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        <ProfileTabNavigation
+          activeTab={activeTab}
+          articleCount={articles.length}
+          bookmarkCount={bookmarks.length}
+          editingArticle={!!editingArticleId}
+          isOwner={isOwnProfile}
+          onChange={(tab) => {
+            if (tab === 'write') setEditingArticleId(null)
+            setActiveTab(tab)
+          }}
+        />
 
         {/* ─── Articles Tab ────────────────────────────────────── */}
         {activeTab === 'articles' && (

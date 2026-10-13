@@ -24,6 +24,9 @@ export interface StoryItem {
   scholarNotes: string
   primarySources: string[]
   isFeatured?: boolean
+  /** Optional illustrative photo (always captioned honestly in the UI). */
+  imageSrc?: string
+  imageCaption?: string
 }
 
 export interface ProverbItem {

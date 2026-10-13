@@ -3,6 +3,8 @@ import { StoryItem, ProverbItem } from '../types/storyTypes'
 export const STORIES_DATA: StoryItem[] = [
   {
     id: 'zera-yacob-hatata',
+    imageSrc: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ethiopic%20Prologue%20Apocalypse%20of%20Peter.jpg?width=1200',
+    imageCaption: 'Ge’ez manuscript page; the Hatata was written in Ge’ez (illustrative photo, public domain via Wikimedia Commons)',
     title: 'The Hatäta (Investigation of the Light of Reason)',
     subtitle: '17th-Century Ethiopian Rationalist Philosophy',
     thinkerOrGriot: 'Zera Yacob (1599–1692 CE)',
@@ -24,6 +26,8 @@ export const STORIES_DATA: StoryItem[] = [
   },
   {
     id: 'precepts-of-ptahhotep',
+    imageSrc: 'https://commons.wikimedia.org/wiki/Special:FilePath/Karnak%20temple%20wall%20hieroglyphic%20script.jpg?width=1200',
+    imageCaption: 'Hieroglyphic inscription at Karnak; Ptahhotep’s maxims survive in hieroglyphic copies (illustrative photo: Mmelouk, CC BY-SA 4.0, via Wikimedia Commons)',
     title: 'The Precepts of Ptahhotep',
     subtitle: 'One of the Oldest Surviving Works of Ethical Wisdom Literature',
     thinkerOrGriot: 'Attributed to Vizier Ptahhotep (5th Dynasty)',
@@ -46,6 +50,8 @@ export const STORIES_DATA: StoryItem[] = [
   },
   {
     id: 'sundiata-griot-epic',
+    imageSrc: 'https://commons.wikimedia.org/wiki/Special:FilePath/THE%20KORA%20PLAYER%20.........%20LIVERPOOL.jpg?width=1200',
+    imageCaption: 'A kora player; griots accompany epics like Sundiata on the kora (illustrative photo: Terry Kearney, CC0, via Wikimedia Commons)',
     title: 'The Epic of Sundiata & The Manden Charter',
     subtitle: 'Oral Epic of Statecraft & The Kouroukan Fouga Assembly',
     thinkerOrGriot: 'Griot Djeli Mamadou Kouyaté (Oral Tradition)',
@@ -67,6 +73,8 @@ export const STORIES_DATA: StoryItem[] = [
   },
   {
     id: 'ubuntu-philosophy',
+    imageSrc: 'https://commons.wikimedia.org/wiki/Special:FilePath/0730%20P7316235%20Ndebele%20Jacolo%20(9407335208).jpg?width=1200',
+    imageCaption: 'Ndebele beadwork, South Africa (illustrative photo: Ann Porteus, CC BY 2.0, via Wikimedia Commons)',
     title: 'Ubuntu: Interconnected Humanist Philosophy',
     subtitle: 'Umuntu Ngumuntu Ngabantu — I Am Because We Are',
     thinkerOrGriot: 'Bantu Philosophical Tradition',

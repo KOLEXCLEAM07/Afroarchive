@@ -121,7 +121,22 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
           </div>
 
           {/* Featured Era Artifact Spotlight */}
-          <div className="lg:col-span-5 card rounded-2xl p-6 md:p-8 flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 card rounded-2xl overflow-hidden flex flex-col justify-between space-y-6">
+            {featuredArtifact.imageSrc ? (
+              <figure className="relative aspect-[16/9] w-full overflow-hidden bg-dark-card border-b border-white/10">
+                <img
+                  src={featuredArtifact.imageSrc}
+                  alt=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover"
+                />
+                <span className="absolute bottom-3 left-3 rounded-full bg-black/60 border border-white/10 px-2.5 py-0.5 font-mono text-[11px] text-ivory-100 backdrop-blur-md max-w-[70%] truncate">
+                  {featuredArtifact.catalogNumber}
+                </span>
+              </figure>
+            ) : null}
+            <div className="p-6 md:p-8 space-y-6 flex flex-col justify-between flex-1">
             <div className="space-y-3">
               <span className="eyebrow">
                 Featured heritage
@@ -153,6 +168,7 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({ onInspectArtif
             >
               Inspect era artifact
             </button>
+            </div>
           </div>
         </div>
       </div>
