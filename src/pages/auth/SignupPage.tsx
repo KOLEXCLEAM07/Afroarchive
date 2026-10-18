@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { friendlyAuthError } from '@/lib/authErrors'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { Turnstile, HoneypotField, captchaRequired, useBotProtection } from '@/components/security/BotProtection'
 
 export default function SignupPage() {
   const { signUp, signInWithGoogle } = useAuth()
@@ -20,6 +21,9 @@ export default function SignupPage() {
   const [gLoading,  setGLoading]  = useState(false)
   const [error,     setError]     = useState<string | null>(null)
   const [success,   setSuccess]   = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const botProtection = useBotProtection()
 
   const passwordStrength = (() => {
     if (password.length === 0) return 0
@@ -36,13 +40,16 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    const botReason = botProtection.blockedReason()
+    if (botReason) { setError(botReason); return }
+    if (captchaRequired(captchaToken)) { setError('Please complete the bot check.'); return }
     if (!/^[a-z0-9_]{3,30}$/.test(username)) { setError('Username must be 3 to 30 characters: lowercase letters, numbers or underscores.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
       const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('username', username)
       if (count) { setError('That username is already taken. Please choose another.'); return }
-      await signUp(email.trim(), password, username, fullName.trim())
+      await signUp(email.trim(), password, username, fullName.trim(), captchaToken ?? undefined)
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         navigate('/')
@@ -54,6 +61,7 @@ export default function SignupPage() {
 
     } finally {
       setLoading(false)
+      setCaptchaReset(value => value + 1)
     }
   }
 
@@ -123,7 +131,16 @@ export default function SignupPage() {
 
             <button
               id="signup-google-btn"
-              onClick={async () => { setGLoading(true); try { await signInWithGoogle() } catch (e: unknown) { setError(friendlyAuthError(e, 'Google sign-up failed. Please try again.')) } finally { setGLoading(false) } }}
+              onClick={async () => {
+                setError(null)
+                const botReason = botProtection.blockedReason()
+                if (botReason) { setError(botReason); return }
+                if (captchaRequired(captchaToken)) { setError('Please complete the bot check.'); return }
+                setGLoading(true)
+                try { await signInWithGoogle(captchaToken ?? undefined) }
+                catch (e: unknown) { setError(friendlyAuthError(e, 'Google sign-up failed. Please try again.')) }
+                finally { setGLoading(false); setCaptchaReset(value => value + 1) }
+              }}
               disabled={gLoading}
               className="w-full btn btn-ghost border border-sand-300 dark:border-dark-border btn-md mb-5 gap-2"
             >
@@ -137,7 +154,8 @@ export default function SignupPage() {
               <div className="flex-1 h-px bg-sand-300 dark:bg-dark-border" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="relative space-y-4">
+              <HoneypotField value={botProtection.honeypot} onChange={botProtection.setHoneypot} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="signup-fullname" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
@@ -180,6 +198,8 @@ export default function SignupPage() {
                   </div>
                 )}
               </div>
+
+              <Turnstile action="signup" onToken={setCaptchaToken} resetKey={captchaReset} />
 
               <button id="signup-submit-btn" type="submit" disabled={loading} className="w-full btn btn-primary btn-md mt-1">
                 {loading ? 'Creating account…' : 'Create Free Account'}

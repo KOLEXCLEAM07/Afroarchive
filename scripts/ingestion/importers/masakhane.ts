@@ -33,7 +33,7 @@ export class MasakhaneImporter extends BaseImporter<MasakhaneRawRepo> {
   async fetchBatch(
     cursor?: string | number,
     limit: number = 10,
-    options?: ConnectorOptions
+    _options?: ConnectorOptions
   ): Promise<BatchFetchResult<MasakhaneRawRepo>> {
     const page = typeof cursor === 'number' ? cursor : parseInt(String(cursor || 1), 10);
     const url = `${this.baseUrl}?per_page=${limit}&page=${page}&sort=updated`;

@@ -14,6 +14,7 @@ import ImageUpload from '@/components/ui/ImageUpload'
 import { cn, uniqueSlug } from '@/lib/utils'
 import type { Collection } from '@/types'
 import toast from 'react-hot-toast'
+import { HoneypotField, useBotProtection } from '@/components/security/BotProtection'
 
 const fadeUp: Variants = {
   hidden:  { opacity: 0, y: 20 },
@@ -74,6 +75,7 @@ export default function CollectionsPage() {
   const [colCoverImage, setColCoverImage] = useState('')
   const [colIsPublic, setColIsPublic] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const botProtection = useBotProtection()
 
   useEffect(() => {
     supabase
@@ -100,6 +102,7 @@ export default function CollectionsPage() {
       navigate('/auth/login', { state: { from: '/collections?new=1' } })
       return
     }
+    botProtection.restart()
     setIsModalOpen(true)
   }
 
@@ -122,6 +125,8 @@ export default function CollectionsPage() {
   const handleCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+    const botReason = botProtection.blockedReason()
+    if (botReason) { toast.error(botReason); return }
     const title = colTitle.trim()
     if (title.length < 3 || title.length > 120) { toast.error('Title must be between 3 and 120 characters.'); return }
     const cover = colCoverImage.trim() ? normalizeUrl(colCoverImage, { httpsOnly: true }) : null
@@ -321,7 +326,8 @@ export default function CollectionsPage() {
             <h2 id="new-collection-title" className="heading-sm text-xl text-gray-900 dark:text-white mb-1">New collection</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Group articles into a reading list. You can add articles from any article page.</p>
 
-            <form onSubmit={handleCreateCollection} className="space-y-4">
+            <form onSubmit={handleCreateCollection} className="relative space-y-4">
+              <HoneypotField value={botProtection.honeypot} onChange={botProtection.setHoneypot} />
               <div>
                 <label htmlFor="col-title" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-1">Title *</label>
                 <input id="col-title" type="text" required autoFocus minLength={3} maxLength={120} value={colTitle} onChange={e => setColTitle(e.target.value)} placeholder="e.g. Swahili Coast maritime heritage" className="input text-sm" />

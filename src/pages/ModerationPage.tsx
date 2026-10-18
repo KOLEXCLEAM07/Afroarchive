@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, EyeOff, Flag, Loader2, RotateCcw, ShieldCheck, X } from 'lucide-react'
+import { Check, EyeOff, Flag, History, Loader2, RotateCcw, ShieldCheck, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { isUuid } from '@/lib/query'
 import { knowledgeTypeLabel } from '@/lib/knowledge'
+import { invalidatePagedQuery } from '@/hooks/usePagedQuery'
 import { cn, formatRelativeDate } from '@/lib/utils'
 
-type Tab = 'reports' | 'articles' | 'records'
+type Tab = 'reports' | 'articles' | 'records' | 'audit'
 
 const REASON_LABELS: Record<string, string> = {
   factual_error: 'Factual error',
@@ -40,6 +41,16 @@ interface ArticleRow {
 }
 
 interface RecordRow { id: string; slug: string; title: string; knowledge_type: string | null; updated_at: string | null }
+interface AuditRow {
+  id: string; target_type: 'article' | 'record' | 'report'; target_id: string; action: string; note: string | null; created_at: string
+  actor: { username: string } | null
+}
+
+const AUDIT_LABELS: Record<string, string> = {
+  report_resolved: 'Report resolved', report_dismissed: 'Report dismissed',
+  article_under_review: 'Article sent to review', article_published: 'Article published',
+  record_hidden: 'Record hidden', record_restored: 'Record restored',
+}
 
 function contentLink(r: ReportRow): string | null {
   if (r.content_type === 'collection') return `/collections/${r.content_id}`
@@ -70,7 +81,7 @@ export default function ModerationPage() {
       <div className="container-app">
         <h1 className="heading-xl text-3xl text-gray-900 dark:text-white mb-6">Moderation</h1>
         <div className="flex gap-1 border-b border-sand-200 dark:border-dark-border mb-6" role="tablist">
-          {([['reports', 'Reports'], ['articles', 'Recent articles'], ['records', 'Hidden records']] as const).map(([key, label]) => (
+          {([['reports', 'Reports'], ['articles', 'Article review'], ['records', 'Hidden records'], ['audit', 'Audit log']] as const).map(([key, label]) => (
             <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
               className={cn('px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
                 tab === key ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300')}>
@@ -81,6 +92,7 @@ export default function ModerationPage() {
         {tab === 'reports' && <ReportsTab />}
         {tab === 'articles' && <ArticlesTab />}
         {tab === 'records' && <RecordsTab />}
+        {tab === 'audit' && <AuditTab />}
       </div>
     </div>
   )
@@ -90,20 +102,23 @@ function Spinner() {
   return <div className="flex justify-center py-16" role="status"><Loader2 className="w-7 h-7 animate-spin text-primary-500" /></div>
 }
 
-async function hideRecordBySlug(slug: string) {
+async function hideRecordBySlug(slug: string, note?: string) {
   const { data } = await supabase.from('knowledge_items').select('id').eq('slug', slug).maybeSingle()
   if (!data) throw new Error('Record not found')
-  const { error } = await supabase.rpc('set_record_status', { p_record_id: data.id, p_status: 'flagged' })
+  const { error } = await supabase.rpc('set_record_status', { p_record_id: data.id, p_status: 'flagged', p_note: note || null })
   if (error) throw error
+  // A hidden record must vanish from browse/search straight away rather than
+  // lingering in a cached page for up to a minute.
+  invalidatePagedQuery()
 }
 
-async function setArticleStatus(id: string, status: 'published' | 'under_review') {
-  const { error } = await supabase.from('articles').update({ status }).eq('id', id)
+async function setArticleStatus(id: string, status: 'published' | 'under_review', note?: string) {
+  const { error } = await supabase.rpc('moderate_article', { p_article_id: id, p_status: status, p_note: note || null })
   if (error) throw error
+  invalidatePagedQuery()
 }
 
 function ReportsTab() {
-  const { user } = useAuth()
   const [status, setStatus] = useState<'pending' | 'resolved' | 'dismissed'>('pending')
   const [rows, setRows] = useState<ReportRow[] | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -122,12 +137,9 @@ function ReportsTab() {
 
   const close = async (r: ReportRow, outcome: 'resolved' | 'dismissed') => {
     setBusy(r.id)
-    const { error } = await supabase.from('reports').update({
-      status: outcome,
-      moderator_note: notes[r.id]?.trim() || null,
-      resolved_by: user?.id,
-      resolved_at: new Date().toISOString(),
-    }).eq('id', r.id)
+    const { error } = await supabase.rpc('moderate_report', {
+      p_report_id: r.id, p_outcome: outcome, p_note: notes[r.id]?.trim() || null,
+    })
     setBusy(null)
     if (error) { toast.error('Could not update the report.'); return }
     setRows(prev => prev?.filter(x => x.id !== r.id) ?? null)
@@ -137,8 +149,8 @@ function ReportsTab() {
   const act = async (r: ReportRow) => {
     setBusy(r.id)
     try {
-      if (r.content_type === 'record') await hideRecordBySlug(r.content_id)
-      else if (r.content_type === 'article' && isUuid(r.content_id)) await setArticleStatus(r.content_id, 'under_review')
+      if (r.content_type === 'record') await hideRecordBySlug(r.content_id, notes[r.id])
+      else if (r.content_type === 'article' && isUuid(r.content_id)) await setArticleStatus(r.content_id, 'under_review', notes[r.id])
       toast.success(r.content_type === 'record' ? 'Record hidden' : 'Article unpublished for review')
     } catch {
       toast.error('That action failed.')
@@ -263,7 +275,7 @@ function RecordsTab() {
   }, [])
 
   const restore = async (r: RecordRow) => {
-    const { error } = await supabase.rpc('set_record_status', { p_record_id: r.id, p_status: 'normalized' })
+    const { error } = await supabase.rpc('set_record_status', { p_record_id: r.id, p_status: 'normalized', p_note: null })
     if (error) { toast.error('Could not restore the record.'); return }
     setRows(prev => prev?.filter(x => x.id !== r.id) ?? null)
     toast.success('Record restored')
@@ -287,6 +299,40 @@ function RecordsTab() {
             <p className="text-xs text-gray-400">{knowledgeTypeLabel(r.knowledge_type)}{r.updated_at && ` · hidden ${formatRelativeDate(r.updated_at)}`}</p>
           </div>
           <button type="button" onClick={() => restore(r)} className="btn btn-outline btn-sm gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Restore</button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function AuditTab() {
+  const [rows, setRows] = useState<AuditRow[] | null>(null)
+
+  useEffect(() => {
+    supabase.from('moderation_actions')
+      .select('id, target_type, target_id, action, note, created_at, actor:profiles!moderation_actions_actor_id_fkey(username)')
+      .order('created_at', { ascending: false }).limit(100)
+      .then(({ data, error }) => {
+        if (error) { toast.error('Could not load the moderation audit log.'); setRows([]); return }
+        setRows((data ?? []) as unknown as AuditRow[])
+      })
+  }, [])
+
+  if (rows === null) return <Spinner />
+  if (!rows.length) return <p className="card p-8 text-center text-sm text-gray-500">No moderation actions have been recorded yet.</p>
+
+  return (
+    <ul className="card divide-y divide-sand-200 dark:divide-dark-border">
+      {rows.map(row => (
+        <li key={row.id} className="flex gap-3 p-4">
+          <History className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{AUDIT_LABELS[row.action] ?? row.action}</p>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {row.actor?.username ? `@${row.actor.username}` : 'A former moderator'} · {formatRelativeDate(row.created_at)} · {row.target_type}
+            </p>
+            {row.note && <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">{row.note}</p>}
+          </div>
         </li>
       ))}
     </ul>

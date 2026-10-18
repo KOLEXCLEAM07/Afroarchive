@@ -30,7 +30,7 @@ export class OpenAfricaImporter extends BaseImporter<OpenAfricaRawDataset> {
   async fetchBatch(
     cursor?: string | number,
     limit: number = 10,
-    options?: ConnectorOptions
+    _options?: ConnectorOptions
   ): Promise<BatchFetchResult<OpenAfricaRawDataset>> {
     const start = typeof cursor === 'number' ? cursor : parseInt(String(cursor || 0), 10);
     const url = `${this.baseUrl}/package_search?rows=${limit}&start=${start}&q=heritage OR culture OR history OR language`;

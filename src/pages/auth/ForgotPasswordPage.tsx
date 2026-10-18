@@ -4,6 +4,7 @@ import { Mail, BookOpen, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { friendlyAuthError } from '@/lib/authErrors'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { Turnstile, HoneypotField, captchaRequired, useBotProtection } from '@/components/security/BotProtection'
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth()
@@ -12,17 +13,24 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const botProtection = useBotProtection()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(null)
+    const botReason = botProtection.blockedReason()
+    if (botReason) { setError(botReason); setLoading(false); return }
+    if (captchaRequired(captchaToken)) { setError('Please complete the bot check.'); setLoading(false); return }
     try {
-      await resetPassword(email.trim())
+      await resetPassword(email.trim(), captchaToken ?? undefined)
       setSuccess(true)
     } catch (err: unknown) {
       setError(friendlyAuthError(err, 'Could not send the reset email. Please try again.'))
     } finally {
       setLoading(false)
+      setCaptchaReset(value => value + 1)
     }
   }
 
@@ -63,7 +71,8 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="text-left space-y-4">
+              <form onSubmit={handleSubmit} className="relative text-left space-y-4">
+                <HoneypotField value={botProtection.honeypot} onChange={botProtection.setHoneypot} />
                 <div>
                   <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email address</label>
                   <div className="relative">
@@ -71,6 +80,7 @@ export default function ForgotPasswordPage() {
                     <input id="forgot-email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input pl-10" />
                   </div>
                 </div>
+                <Turnstile action="password_reset" onToken={setCaptchaToken} resetKey={captchaReset} />
                 <button id="forgot-submit-btn" type="submit" disabled={loading} className="w-full btn btn-primary btn-md">
                   {loading ? 'Sending…' : 'Send Reset Link'}
                 </button>

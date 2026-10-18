@@ -4,6 +4,7 @@ import { BookOpen, Mail, Lock, Eye, EyeOff, AlertCircle, Globe } from 'lucide-re
 import { useAuth } from '@/contexts/AuthContext'
 import { friendlyAuthError } from '@/lib/authErrors'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { Turnstile, HoneypotField, captchaRequired, useBotProtection } from '@/components/security/BotProtection'
 
 export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth()
@@ -20,31 +21,42 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const [gLoading, setGLoading] = useState(false)
   const [error,    setError]    = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const botProtection = useBotProtection()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    const botReason = botProtection.blockedReason()
+    if (botReason) { setError(botReason); return }
+    if (captchaRequired(captchaToken)) { setError('Please complete the bot check.'); return }
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(email, password, captchaToken ?? undefined)
       navigate(returnTo, { replace: true })
     } catch (err: unknown) {
       setError(friendlyAuthError(err, 'Invalid email or password'))
     } finally {
       setLoading(false)
+      setCaptchaReset(value => value + 1)
     }
   }
 
   const handleGoogle = async () => {
-    setGLoading(true)
     setError(null)
+    const botReason = botProtection.blockedReason()
+    if (botReason) { setError(botReason); return }
+    if (captchaRequired(captchaToken)) { setError('Please complete the bot check.'); return }
+    setGLoading(true)
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(captchaToken ?? undefined)
     } catch (err: unknown) {
       setError(friendlyAuthError(err, 'Google sign-in failed. Please try again.'))
 
     } finally {
       setGLoading(false)
+      setCaptchaReset(value => value + 1)
     }
   }
 
@@ -111,7 +123,8 @@ export default function LoginPage() {
               <div className="flex-1 h-px bg-sand-300 dark:bg-dark-border" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="relative space-y-4">
+              <HoneypotField value={botProtection.honeypot} onChange={botProtection.setHoneypot} />
               <div>
                 <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
                 <div className="relative">
@@ -156,6 +169,8 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <Turnstile action="login" onToken={setCaptchaToken} resetKey={captchaReset} />
 
               <button id="login-submit-btn" type="submit" disabled={loading} className="w-full btn btn-primary btn-md mt-2">
                 {loading ? 'Signing in…' : 'Sign In'}

@@ -11,7 +11,7 @@
 import { BaseImporter } from './base-importer';
 import { NormalizedItem, BatchFetchResult, ConnectorOptions, KnowledgeType, MediaType } from '../types';
 import { RightsClassifier } from '../rights';
-import { AfricanRelevanceClassifier } from '../relevance';
+import { cleanRecordDescription } from '../../../src/lib/recordText';
 
 export interface WikimediaRawPage {
   pageid: number;
@@ -219,17 +219,18 @@ export class WikimediaImporter extends BaseImporter<WikimediaRawPage> {
     if (!cleanTitle) return null;
 
     const metadata = info.extmetadata || {};
+    // No fallback to "Public Domain" here: an absent licence means undetermined,
+    // and the rights classifier must be allowed to say so.
     const rawLicense =
       metadata.LicenseShortName?.value ||
       metadata.UsageTerms?.value ||
-      metadata.License?.value ||
-      'Public Domain';
+      metadata.License?.value;
 
     const rawArtist = metadata.Artist?.value || metadata.Credit?.value;
     const cleanArtist = this.cleanHtml(rawArtist) || 'Wikimedia Commons Contributor';
 
     const rawDesc = metadata.ImageDescription?.value || metadata.ObjectName?.value;
-    const cleanDesc = this.cleanHtml(rawDesc);
+    const cleanDesc = cleanRecordDescription(rawDesc) ?? '';
     const summary = cleanDesc || `Historical archival media asset: "${cleanTitle}" preserved on Wikimedia Commons.`;
 
     // Rights assessment: DO NOT assume all items are freely reusable.

@@ -19,6 +19,7 @@ import { normalizeUrl } from '@/lib/query'
 import { cn, formatDate, formatNumber, getAvatarFallback, getAvatarColor, uniqueSlug, calculateReadingTime } from '@/lib/utils'
 import type { Profile, Article, Category } from '@/types'
 import toast from 'react-hot-toast'
+import { HoneypotField, useBotProtection } from '@/components/security/BotProtection'
 
 const fadeUp: Variants = {
   hidden:  { opacity: 0, y: 30 },
@@ -60,6 +61,7 @@ export default function ProfilePage() {
   const [writeReferences, setWriteReferences] = useState('')
   const [isSubmittingArticle, setIsSubmittingArticle] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
+  const articleBotProtection = useBotProtection()
 
   // Edit Profile Form
   const [editFullName, setEditFullName] = useState('')
@@ -187,6 +189,8 @@ export default function ProfilePage() {
 
   const handleSaveArticle = async (status: 'published' | 'draft' | 'under_review') => {
     if (!user) { toast.error('Please sign in to write.'); navigate('/auth/login', { state: { from: '/write' } }); return }
+    const botReason = articleBotProtection.blockedReason()
+    if (botReason) { toast.error(botReason); return }
 
     const title = writeTitle.trim()
     const content = writeContent.trim()
@@ -439,6 +443,7 @@ export default function ProfilePage() {
             writeContent={writeContent} setWriteContent={setWriteContent} writeTimePeriod={writeTimePeriod} setWriteTimePeriod={setWriteTimePeriod}
             writeCountry={writeCountry} setWriteCountry={setWriteCountry} writeLanguage={writeLanguage} setWriteLanguage={setWriteLanguage} writeReferences={writeReferences} setWriteReferences={setWriteReferences}
             categories={categories} editingArticleId={editingArticleId} isSubmitting={isSubmittingArticle}
+            honeypot={articleBotProtection.honeypot} onHoneypotChange={articleBotProtection.setHoneypot}
             onSave={handleSaveArticle}
           />
         )}
@@ -576,17 +581,19 @@ function ArticlesTab({ articles, articleFilter, setArticleFilter, isOwnProfile, 
 
 function WriteTab({ writeTitle, setWriteTitle, writeCoverImage, setWriteCoverImage, writeCategoryId, setWriteCategoryId,
   writeExcerpt, setWriteExcerpt, writeContent, setWriteContent, writeTimePeriod, setWriteTimePeriod,
-  writeCountry, setWriteCountry, writeLanguage, setWriteLanguage, writeReferences, setWriteReferences, categories, editingArticleId, isSubmitting, onSave,
+  writeCountry, setWriteCountry, writeLanguage, setWriteLanguage, writeReferences, setWriteReferences, categories, editingArticleId, isSubmitting, honeypot, onHoneypotChange, onSave,
 }: {
   writeTitle: string; setWriteTitle: (v: string) => void; writeCoverImage: string; setWriteCoverImage: (v: string) => void
   writeCategoryId: string; setWriteCategoryId: (v: string) => void; writeExcerpt: string; setWriteExcerpt: (v: string) => void
   writeContent: string; setWriteContent: (v: string) => void; writeTimePeriod: string; setWriteTimePeriod: (v: string) => void
   writeCountry: string; setWriteCountry: (v: string) => void; writeLanguage: string; setWriteLanguage: (v: string) => void; writeReferences: string; setWriteReferences: (v: string) => void
   categories: Category[]; editingArticleId: string | null; isSubmitting: boolean
+  honeypot: string; onHoneypotChange: (value: string) => void
   onSave: (status: 'published' | 'draft') => void
 }) {
   return (
-    <div className="mt-8 card p-6 sm:p-10 space-y-8 animate-fade-in">
+    <div className="relative mt-8 card p-6 sm:p-10 space-y-8 animate-fade-in">
+      <HoneypotField value={honeypot} onChange={onHoneypotChange} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-sand-200 dark:border-dark-border pb-6 gap-4">
         <div>
           <span className="badge badge-primary mb-2">Publishing Desk</span>

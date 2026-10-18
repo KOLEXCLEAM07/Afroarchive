@@ -4,17 +4,23 @@ import { Quote } from 'lucide-react'
 // Renders the lightweight Markdown subset used by articles (headings, lists,
 // quotes, **bold**, *italic*) as React elements. Nothing is injected as HTML.
 
-function renderInline(text: string): ReactNode[] {
+function renderInline(text: string, keyPrefix = ''): ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g)
   return parts.map((part, i) => {
-    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i}>{part.slice(2, -2)}</strong>
-    if (/^\*[^*]+\*$/.test(part)) return <em key={i}>{part.slice(1, -1)}</em>
-    return <Fragment key={i}>{part}</Fragment>
+    const key = `${keyPrefix}${i}`
+    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={key}>{part.slice(2, -2)}</strong>
+    if (/^\*[^*]+\*$/.test(part)) return <em key={key}>{part.slice(1, -1)}</em>
+    return <Fragment key={key}>{part}</Fragment>
   })
 }
 
 function withLineBreaks(text: string): ReactNode[] {
-  return text.split('\n').flatMap((line, i) => (i === 0 ? renderInline(line) : [<br key={`br-${i}`} />, ...renderInline(line)]))
+  // Each line's inline parts are flattened into one array, so their keys must be
+  // namespaced per line — otherwise every line restarts at 0 and React sees
+  // duplicate keys across the whole paragraph.
+  return text
+    .split('\n')
+    .flatMap((line, i) => (i === 0 ? renderInline(line, 'l0-') : [<br key={`br-${i}`} />, ...renderInline(line, `l${i}-`)]))
 }
 
 type Block =

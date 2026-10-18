@@ -15,11 +15,11 @@ interface AuthContextValue {
   user:           User    | null
   profile:        Profile | null
   loading:        boolean
-  signUp:         (email: string, password: string, username: string, fullName: string) => Promise<void>
-  signIn:         (email: string, password: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signUp:         (email: string, password: string, username: string, fullName: string, captchaToken?: string) => Promise<void>
+  signIn:         (email: string, password: string, captchaToken?: string) => Promise<void>
+  signInWithGoogle: (captchaToken?: string) => Promise<void>
   signOut:        () => Promise<void>
-  resetPassword:  (email: string) => Promise<void>
+  resetPassword:  (email: string, captchaToken?: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
   refreshProfile: () => Promise<void>
   isAdmin:        boolean
@@ -84,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     username: string,
-    fullName: string
+    fullName: string,
+    captchaToken?: string
   ) => {
     const { error } = await supabase.auth.signUp({
       email,
@@ -92,21 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: {
         data: { username, full_name: fullName },
         emailRedirectTo: getRedirectUrl('/auth/callback'),
+        ...(captchaToken ? { captchaToken } : {}),
       },
     })
     if (error) throw error
   }
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password, options: captchaToken ? { captchaToken } : undefined })
     if (error) throw error
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (captchaToken?: string) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: getRedirectUrl('/auth/callback'),
+        ...(captchaToken ? { captchaToken } : {}),
       },
     })
     if (error) throw error
@@ -119,9 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) console.error('[auth] sign out:', error.message)
   }
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string, captchaToken?: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: getRedirectUrl('/auth/reset-password'),
+      ...(captchaToken ? { captchaToken } : {}),
     })
     if (error) throw error
   }

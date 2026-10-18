@@ -3,8 +3,8 @@ import { Search, Compass, Layers, Box } from 'lucide-react'
 import { CategoryFilter, RegionFilter, ArtifactItem } from '../../types/archiveTypes'
 import { ARTIFACTS_DATA } from '../../data/archiveData'
 import { ArtifactCard } from './ArtifactCard'
-import { supabase } from '../../lib/supabase'
-import { ilikeAny } from '../../lib/query'
+import { fetchKnowledgePage, queryKey, PAGE_SIZE } from '../../lib/knowledgeQuery'
+import { usePagedQuery } from '../../hooks/usePagedQuery'
 import { cleanRecordText, cleanRecordTitle, usefulPeriod } from '../../lib/knowledge'
 
 export interface ArchiveExplorerProps {
@@ -66,7 +66,8 @@ const LIVE_TYPES: Record<CategoryFilter, string[] | null> = {
   architecture: ['place'],
   arts: ['cultural_artifact'],
 }
-const LIVE_PAGE = 24
+/** Inner join, so the `only3d` filter and its count only see records with media. */
+const LIVE_SELECT = '*, sources(name, slug), media!inner(file_url, thumbnail_url, media_type)'
 
 const looksLikeImage = (url: string) => {
   try {
@@ -145,9 +146,6 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all')
   const [selectedRegion, setSelectedRegion] = useState<RegionFilter>(initialRegion)
   const [searchQuery, setSearchQuery] = useState('')
-  const [liveArtifacts, setLiveArtifacts] = useState<ArtifactItem[]>([])
-  const [liveTotal, setLiveTotal] = useState(0)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [only3d, setOnly3d] = useState(false)
 
@@ -160,57 +158,45 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
     return () => clearTimeout(t)
   }, [searchQuery])
 
-  const fetchLivePage = useCallback(async (page: number) => {
-    const types = LIVE_TYPES[selectedCategory]
-    if (!types) return { items: [] as ArtifactItem[], total: 0 }
-    let req = supabase
-      .from('knowledge_items')
-      .select('*, sources(name, slug), media!inner(file_url, thumbnail_url, media_type)', { count: 'exact' })
-      .in('knowledge_type', types)
-      .or('verification_status.is.null,verification_status.neq.flagged')
-    if (selectedRegion !== 'all') req = req.overlaps('country_codes', REGION_COUNTRIES[selectedRegion])
-    if (only3d) req = req.eq('media.media_type', '3d_model')
-    const q = debouncedQuery.trim()
-    if (q) req = req.or(ilikeAny(['title', 'summary'], q))
-    const from = page * LIVE_PAGE
-    const { data, error, count } = await req.order('created_at', { ascending: false }).order('id').range(from, from + LIVE_PAGE - 1)
-    if (error) throw error
-    return { items: ((data ?? []) as unknown as KnowledgeRow[]).map(mapKnowledgeRow), total: count ?? 0 }
+  const fetchLivePage = useCallback(
+    async (page: number) => {
+      const types = LIVE_TYPES[selectedCategory]
+      if (!types) return { items: [] as ArtifactItem[], total: 0 }
+      const { rows, total } = await fetchKnowledgePage<KnowledgeRow>({
+        page,
+        pageSize: PAGE_SIZE,
+        select: LIVE_SELECT,
+        types,
+        countryCodes: selectedRegion === 'all' ? undefined : REGION_COUNTRIES[selectedRegion],
+        only3d,
+        search: debouncedQuery,
+        searchColumns: ['title', 'summary'],
+      })
+      return { items: rows.map(mapKnowledgeRow), total }
+    },
+    [selectedCategory, selectedRegion, debouncedQuery, only3d],
+  )
+
+  // The same photograph is sometimes imported twice under different titles.
+  const dedupeArtifact = useCallback((a: ArtifactItem) => a.imageSrc || a.title.toLowerCase(), [])
+
+  // A null key disables the query for categories that show curated items only.
+  const liveKey = useMemo(() => {
+    if (!LIVE_TYPES[selectedCategory]) return null
+    return queryKey('archive', {
+      category: selectedCategory,
+      region: selectedRegion,
+      q: debouncedQuery.trim(),
+      only3d,
+    })
   }, [selectedCategory, selectedRegion, debouncedQuery, only3d])
 
-  // Reload from the first page whenever a filter changes.
-  useEffect(() => {
-    let cancelled = false
-    setLiveArtifacts([])
-    setLiveTotal(0)
-    fetchLivePage(0)
-      .then(({ items, total }) => {
-        if (cancelled) return
-        setLiveArtifacts(items)
-        setLiveTotal(total)
-      })
-      .catch((err) => console.warn('Could not load archive records:', err))
-    return () => {
-      cancelled = true
-    }
-  }, [fetchLivePage])
-
-  const loadMore = async () => {
-    setLoadingMore(true)
-    try {
-      const { items, total } = await fetchLivePage(Math.floor(liveArtifacts.length / LIVE_PAGE))
-      setLiveArtifacts((prev) => {
-        // The same photograph is sometimes imported twice under different titles.
-        const seen = new Set(prev.map((a) => a.imageSrc || a.title.toLowerCase()))
-        return [...prev, ...items.filter((a) => !seen.has(a.imageSrc || a.title.toLowerCase()))]
-      })
-      setLiveTotal(total)
-    } catch (err) {
-      console.warn('Could not load more records:', err)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+  const {
+    items: liveArtifacts,
+    total: liveTotal,
+    loadingMore,
+    loadMore,
+  } = usePagedQuery<ArtifactItem>({ key: liveKey, fetchPage: fetchLivePage, dedupeKey: dedupeArtifact })
 
 
   const categories: { key: CategoryFilter; label: string }[] = [

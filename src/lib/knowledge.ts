@@ -1,4 +1,5 @@
 import type { Article, Profile } from '@/types'
+import { cleanRecordDescription } from './recordText'
 
 export interface KnowledgeRecord {
   id: string
@@ -77,10 +78,11 @@ export function cleanRecordText(raw: string | null | undefined): string | null {
 /**
  * Creates a card-friendly description while preserving the provider's full text
  * for the record detail page. Imported media descriptions often append licence
- * instructions that are useful as metadata but poor homepage copy.
+ * instructions or catalogue metadata that are useful as metadata but poor
+ * homepage copy.
  */
 export function recordExcerpt(raw: string | null | undefined, maxLength = 260): string | null {
-  const cleaned = cleanRecordText(raw)
+  const cleaned = cleanRecordDescription(raw)
   if (!cleaned) return null
 
   const summary = cleaned
@@ -166,7 +168,7 @@ export function knowledgeItemToArticle(item: KnowledgeRecord): Article {
     title: cleanRecordTitle(item.title),
     slug: item.slug || item.id,
     excerpt: recordExcerpt(item.summary) || recordExcerpt(item.content),
-    content: cleanRecordText(item.content || item.summary) || '',
+    content: cleanRecordDescription(item.content || item.summary) || '',
     cover_image: recordImage(item),
     status: 'published',
     category_id: item.knowledge_type,

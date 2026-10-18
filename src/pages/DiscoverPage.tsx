@@ -5,7 +5,9 @@ import { Search, X, SlidersHorizontal, TrendingUp, Clock, Star } from 'lucide-re
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { ilikeAny } from '@/lib/query'
-import { KNOWLEDGE_SELECT, NOT_FLAGGED, knowledgeItemToArticle, type KnowledgeRecord } from '@/lib/knowledge'
+import { fetchKnowledgePage, queryKey } from '@/lib/knowledgeQuery'
+import { usePagedQuery } from '@/hooks/usePagedQuery'
+import { knowledgeItemToArticle, type KnowledgeRecord } from '@/lib/knowledge'
 import { ARTICLE_LANGUAGES } from '@/lib/languages'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import ArticleCard from '@/components/articles/ArticleCard'
@@ -81,9 +83,6 @@ export default function DiscoverPage() {
   const [queryInput, setQueryInput] = useState(query)
   const [categories, setCategories] = useState<Category[]>([])
   const [articles, setArticles] = useState<Article[]>([])
-  const [records, setRecords] = useState<Article[]>([])
-  const [recordTotal, setRecordTotal] = useState(0)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
@@ -124,22 +123,37 @@ export default function DiscoverPage() {
 
   const showRecords = kind !== 'articles' && !category && !country && !language
 
-  const fetchRecordPage = useCallback(async (page: number) => {
-    const q = query.trim()
-    const typeDef = RECORD_TYPES.find(t => t.value === recordType)
-    let req = supabase.from('knowledge_items').select(KNOWLEDGE_SELECT, { count: 'exact' }).or(NOT_FLAGGED)
-    if (typeDef && typeDef.types.length) req = req.in('knowledge_type', typeDef.types)
-    // Scholarly papers are a niche; keep them out of the default view unless asked for.
-    else req = req.neq('knowledge_type', 'work')
-    if (q) req = req.or(ilikeAny(['title', 'summary'], q))
-    const from = page * RECORD_PAGE
-    const { data, error, count } = await req.order('created_at', { ascending: false }).order('id').range(from, from + RECORD_PAGE - 1)
-    return {
-      error: !!error,
-      total: count ?? 0,
-      items: ((data ?? []) as unknown as KnowledgeRecord[]).map(knowledgeItemToArticle),
-    }
-  }, [query, recordType])
+  const fetchRecordPage = useCallback(
+    async (page: number) => {
+      const typeDef = RECORD_TYPES.find(t => t.value === recordType)
+      const { rows, total } = await fetchKnowledgePage<KnowledgeRecord>({
+        page,
+        pageSize: RECORD_PAGE,
+        types: typeDef?.types.length ? typeDef.types : undefined,
+        // Scholarly papers are a niche; keep them out of the default view unless asked for.
+        excludeTypes: typeDef?.types.length ? undefined : ['work'],
+        search: query,
+        searchColumns: ['title', 'summary'],
+      })
+      return { items: rows.map(knowledgeItemToArticle), total }
+    },
+    [query, recordType]
+  )
+
+  // Records are hidden entirely while the article-only filters are on.
+  const recordsKey = useMemo(
+    () => (showRecords ? queryKey('discover-records', { q: query.trim(), rt: recordType }) : null),
+    [showRecords, query, recordType]
+  )
+
+  const {
+    items: records,
+    total: recordTotal,
+    loading: recordsLoading,
+    loadingMore,
+    error: recordsError,
+    loadMore: loadMoreRecords,
+  } = usePagedQuery<Article>({ key: recordsKey, fetchPage: fetchRecordPage })
 
   // Community articles and bundled editorial essays
   useEffect(() => {
@@ -188,29 +202,7 @@ export default function DiscoverPage() {
     return () => { cancelled = true }
   }, [query, category, country, language, sort, kind, categories, activeCategory])
 
-  // Imported archive records, paged
-  useEffect(() => {
-    let cancelled = false
-    setRecords([])
-    setRecordTotal(0)
-    if (!showRecords) return
-    fetchRecordPage(0)
-      .then(r => { if (cancelled) return; if (r.error) setLoadError(true); setRecords(r.items); setRecordTotal(r.total) })
-      .catch(() => { if (!cancelled) setLoadError(true) })
-    return () => { cancelled = true }
-  }, [showRecords, fetchRecordPage])
-
-  const loadMoreRecords = async () => {
-    setLoadingMore(true)
-    try {
-      const page = Math.floor(records.length / RECORD_PAGE)
-      const r = await fetchRecordPage(page)
-      setRecords(prev => [...prev, ...r.items])
-      setRecordTotal(r.total)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+  // Imported archive records are fetched by usePagedQuery above.
 
   const items = useMemo(() => {
     // Skip duplicate imports of the same image.
@@ -224,6 +216,10 @@ export default function DiscoverPage() {
   }, [articles, records])
   const totalResults = articles.length + recordTotal
   const hasMoreRecords = showRecords && records.length < recordTotal
+  // Wait for both the article and the record queries, so records arriving a beat
+  // later no longer flash the "Nothing found" state.
+  const busy = loading || recordsLoading
+  const showLoadError = (loadError || !!recordsError) && !busy
 
   const clearFilters = () => {
     setQueryInput('')
@@ -304,8 +300,8 @@ export default function DiscoverPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-y border-sand-200 dark:border-dark-border mb-6 text-sm">
           <p className="text-gray-500 dark:text-gray-400" aria-live="polite">
-            {loading ? 'Searching…' : `${totalResults.toLocaleString()} result${totalResults === 1 ? '' : 's'}`}
-            {query && !loading && <span className="font-medium text-gray-800 dark:text-gray-200"> for “{query}”</span>}
+            {busy ? 'Searching…' : `${totalResults.toLocaleString()} result${totalResults === 1 ? '' : 's'}`}
+            {query && !busy && <span className="font-medium text-gray-800 dark:text-gray-200"> for “{query}”</span>}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1" role="group" aria-label="Content type">
@@ -393,10 +389,10 @@ export default function DiscoverPage() {
           )}
 
           <div className="flex-1 min-w-0">
-            {loadError && !loading && (
+            {showLoadError && (
               <p className="mb-4 text-sm text-amber-700 dark:text-amber-400">Some results could not be loaded. Showing what is available.</p>
             )}
-            {loading ? (
+            {busy ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="card p-5 space-y-4 animate-pulse">
@@ -424,7 +420,7 @@ export default function DiscoverPage() {
                 ))}
               </motion.div>
             )}
-            {!loading && hasMoreRecords && (
+            {!busy && hasMoreRecords && (
               <div className="mt-10 text-center">
                 <button type="button" onClick={loadMoreRecords} disabled={loadingMore} className="btn btn-outline btn-md gap-2">
                   {loadingMore ? 'Loading…' : `Show more (${(recordTotal - records.length).toLocaleString()} remaining)`}

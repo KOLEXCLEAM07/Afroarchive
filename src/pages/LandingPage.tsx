@@ -10,7 +10,12 @@ import { cn, formatNumber } from '@/lib/utils'
 import ArticleCard from '@/components/articles/ArticleCard'
 import type { Article } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { KNOWLEDGE_SELECT, NOT_FLAGGED, knowledgeItemToArticle, licenseLabel, type KnowledgeRecord } from '@/lib/knowledge'
+import {
+  KNOWLEDGE_SELECT, NOT_FLAGGED, knowledgeItemToArticle, licenseLabel,
+  cleanRecordTitle, cleanRecordText, recordExcerpt, recordImage, usefulPeriod,
+  type KnowledgeRecord,
+} from '@/lib/knowledge'
+import { fetchKnowledgeBySlugs } from '@/lib/knowledgeQuery'
 import { FOUNDATIONAL_ARTICLES } from '@/data/articlesData'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
@@ -29,19 +34,57 @@ const THEMES = [
   { name: 'Archive records',         icon: Archive,   to: '/discover?type=records' },
 ]
 
-const PHILOSOPHERS = [
-  { name: 'Cheikh Anta Diop', country: 'Senegal', era: '1923–1986', description: 'Historian, anthropologist and physicist whose work placed ancient Egypt within African history and reshaped debates on the continent’s past.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Cheikh_Anta_Diop_%281%29.jpg/400px-Cheikh_Anta_Diop_%281%29.jpg' },
-  { name: 'Frantz Fanon', country: 'Martinique / Algeria', era: '1925–1961', description: 'Psychiatrist and political philosopher whose writing on colonialism and decolonisation shaped liberation movements worldwide.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Frantz_Fanon.jpg/400px-Frantz_Fanon.jpg' },
-  { name: 'Kwame Nkrumah', country: 'Ghana', era: '1909–1972', description: 'Pan-Africanist thinker and statesman who led Ghana to independence and argued for continental unity.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Kwame_Nkrumah.jpg/400px-Kwame_Nkrumah.jpg' },
-  { name: 'Steve Biko', country: 'South Africa', era: '1946–1977', description: 'Founder of the Black Consciousness Movement, which centred psychological liberation in the struggle against apartheid.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Steve_Biko.jpg/400px-Steve_Biko.jpg' },
+/**
+ * Landing-page spotlights.
+ *
+ * These are *references* into the archive, not copies: the title, image, summary
+ * and credit are read from each record at render time, so this page cannot drift
+ * from the data — and cannot hotlink a photograph nobody credited.
+ *
+ * The slugs are hand-picked deliberately. "Every person who has a photograph" is
+ * mostly serving politicians, which does not belong under a thinkers heading, so
+ * the *selection* stays editorial while the *content* stays live.
+ */
+const SPOTLIGHT_THINKERS = [
+  'cheikh-anta-diop-q521729',
+  'kwame-nkrumah-q8620',
+  'steve-biko-q214473',
+  'wole-soyinka-q41488',
 ]
 
-const CIVILIZATIONS = [
-  { name: 'Kush & Nubia', region: 'Northeast Africa', period: 'c. 2500 BCE – 350 CE', img: 'https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?w=400&q=80', q: 'Nubian' },
-  { name: 'Mali Empire', region: 'West Africa', period: 'c. 1235 – 1670 CE', img: 'https://images.unsplash.com/photo-1564436872-f6d81182df12?w=400&q=80', q: 'Mali' },
-  { name: 'Kingdom of Aksum', region: 'Horn of Africa', period: 'c. 100 – 940 CE', img: 'https://images.unsplash.com/photo-1572550484818-8f5f64e3f5b0?w=400&q=80', q: 'Aksum' },
-  { name: 'Great Zimbabwe', region: 'Southern Africa', period: 'c. 1100 – 1450 CE', img: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=400&q=80', q: 'Great Zimbabwe' },
+const SPOTLIGHT_SITES = [
+  'great-zimbabwe-q209217',
+  'meroe-q5780',
+  'great-mosque-of-djenn-1-165257',
+  'monolithic-churches-in-lalibela-q642979',
 ]
+
+const regionName = (code?: string | null): string => {
+  const c = code?.toUpperCase()
+  if (!c) return ''
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(c) || c
+  } catch {
+    return c
+  }
+}
+
+/** Credit line for a record: who supplied it and under which licence. */
+const recordCredit = (item: KnowledgeRecord): string =>
+  [item.sources?.name, item.license_type ? licenseLabel(item.license_type) : null].filter(Boolean).join(' · ')
+
+/** Loads hand-picked records by slug. `null` while loading, `[]` if none resolve. */
+function useSpotlight(slugs: string[]): KnowledgeRecord[] | null {
+  const [records, setRecords] = useState<KnowledgeRecord[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetchKnowledgeBySlugs<KnowledgeRecord>(slugs)
+      .then(rows => { if (!cancelled) setRecords(rows) })
+      .catch(() => { if (!cancelled) setRecords([]) })
+    return () => { cancelled = true }
+  }, [slugs])
+  return records
+}
 
 const fadeUp: Variants = {
   hidden:  { opacity: 0, y: 30 },
@@ -374,6 +417,10 @@ function ThemesSection() {
 // ─── Thinkers ─────────────────────────────────────────────────
 function PhilosophersSection() {
   const [ref, inView] = useInView({ threshold: 0.1, triggerOnce: true })
+  const records = useSpotlight(SPOTLIGHT_THINKERS)
+  // Better to show nothing than to show people we invented.
+  if (records?.length === 0) return null
+
   return (
     <section ref={ref} className="section bg-gray-50 dark:bg-dark-surface">
       <div className="container-app">
@@ -385,67 +432,95 @@ function PhilosophersSection() {
           cta={{ label: 'Philosophy & thought', to: '/discover?category=philosophy' }}
         />
         <motion.div variants={stagger} initial="hidden" animate={inView ? 'visible' : 'hidden'} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-          {PHILOSOPHERS.map(p => (
-            <motion.div key={p.name} variants={fadeUp}>
-              <div className="card-hover p-6 h-full flex flex-col items-center text-center group">
-                <img
-                  src={p.img}
-                  alt={p.name}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  className="w-24 h-24 rounded-2xl object-cover shadow-md mb-4 bg-sand-200 dark:bg-dark-card"
-                  onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=0F5132&color=fff&size=96` }}
-                />
-                <h3 className="font-serif font-bold text-gray-900 dark:text-white">{p.name}</h3>
-                <p className="text-xs text-primary-600 dark:text-primary-400 font-medium mt-1">{p.country} · {p.era}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 leading-relaxed line-clamp-4">{p.description}</p>
-                <Link to={`/discover?q=${encodeURIComponent(p.name)}`} className="mt-auto pt-4 text-xs text-primary-600 dark:text-primary-400 font-medium hover:underline flex items-center gap-1">
-                  Search the archive <ChevronRight className="w-3 h-3" aria-hidden="true" />
-                </Link>
-              </div>
-            </motion.div>
-          ))}
+          {records === null
+            ? SPOTLIGHT_THINKERS.map(slug => (
+                <motion.div key={slug} variants={fadeUp} className="card-hover h-72 animate-pulse" aria-hidden="true" />
+              ))
+            : records.map(p => {
+                const name = cleanRecordTitle(p.title)
+                const img = recordImage(p)
+                const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F5132&color=fff&size=96`
+                const meta = [regionName(p.country_codes?.[0]), usefulPeriod(p.time_period)].filter(Boolean).join(' · ')
+                const description = recordExcerpt(p.summary, 160) || cleanRecordText(p.summary) || ''
+                return (
+                  <motion.div key={p.slug ?? p.id} variants={fadeUp}>
+                    <div className="card-hover p-6 h-full flex flex-col items-center text-center group">
+                      <img
+                        src={img ?? avatar}
+                        alt={name}
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="w-24 h-24 rounded-2xl object-cover shadow-md mb-4 bg-sand-200 dark:bg-dark-card"
+                        onError={e => { e.currentTarget.src = avatar }}
+                      />
+                      <h3 className="font-serif font-bold text-gray-900 dark:text-white">{name}</h3>
+                      {meta && <p className="text-xs text-primary-600 dark:text-primary-400 font-medium mt-1">{meta}</p>}
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 leading-relaxed line-clamp-4">{description}</p>
+                      <p className="text-[11px] text-gray-400 mt-3">{recordCredit(p)}</p>
+                      <Link to={`/article/${p.slug ?? p.id}`} className="mt-auto pt-4 text-xs text-primary-600 dark:text-primary-400 font-medium hover:underline flex items-center gap-1">
+                        Open the record <ChevronRight className="w-3 h-3" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </motion.div>
+                )
+              })}
         </motion.div>
       </div>
     </section>
   )
 }
 
-// ─── Civilizations ────────────────────────────────────────────
+// ─── Heritage sites ───────────────────────────────────────────
 function CivilizationsSection() {
   const [ref, inView] = useInView({ threshold: 0.1, triggerOnce: true })
+  const records = useSpotlight(SPOTLIGHT_SITES)
+  if (records?.length === 0) return null
+
   return (
     <section ref={ref} className="section">
       <div className="container-app">
         <SectionHeader
-          badge="Civilizations"
-          title="African states and kingdoms"
-          subtitle="A few of the societies explored in essays and records across the archive"
+          badge="Heritage"
+          title="Monuments & heritage sites"
+          subtitle="Sites across the continent, with photographs and credit lines taken from open collections"
           inView={inView}
-          cta={{ label: 'History & civilizations', to: '/discover?category=history' }}
+          cta={{ label: 'Places on the map', to: '/discover?rt=places' }}
         />
         <motion.div variants={stagger} initial="hidden" animate={inView ? 'visible' : 'hidden'} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-          {CIVILIZATIONS.map(civ => (
-            <motion.div key={civ.name} variants={fadeUp}>
-              <Link to={`/discover?q=${encodeURIComponent(civ.q)}`} className="group block card-hover overflow-hidden">
-                <div className="relative h-48 overflow-hidden bg-sand-200 dark:bg-dark-card">
-                  <img
-                    src={civ.img}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <span className="absolute bottom-3 left-3 badge bg-white/20 text-white text-xs">{civ.period}</span>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-serif font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{civ.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{civ.region}</p>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+          {records === null
+            ? SPOTLIGHT_SITES.map(slug => (
+                <motion.div key={slug} variants={fadeUp} className="card-hover h-64 animate-pulse" aria-hidden="true" />
+              ))
+            : records.map(site => {
+                const name = cleanRecordTitle(site.title)
+                const img = recordImage(site)
+                const place = regionName(site.country_codes?.[0])
+                const badge = usefulPeriod(site.time_period) || place
+                return (
+                  <motion.div key={site.slug ?? site.id} variants={fadeUp}>
+                    <Link to={`/article/${site.slug ?? site.id}`} className="group block card-hover overflow-hidden">
+                      <div className="relative h-48 overflow-hidden bg-sand-200 dark:bg-dark-card">
+                        {img && (
+                          <img
+                            src={img}
+                            alt=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            onError={e => { e.currentTarget.style.visibility = 'hidden' }}
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        {badge && <span className="absolute bottom-3 left-3 badge bg-white/20 text-white text-xs">{badge}</span>}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-serif font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{name}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{recordCredit(site) || place}</p>
+                      </div>
+                    </Link>
+                  </motion.div>
+                )
+              })}
         </motion.div>
       </div>
     </section>

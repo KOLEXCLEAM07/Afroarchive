@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink, Info, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchKnowledgeByIds } from '@/lib/knowledgeQuery'
 import { formatYear, knowledgeTypeLabel, yearSpan as span } from '@/lib/knowledge'
 
 type Fact = { label: string; value: ReactNode }
@@ -113,9 +114,8 @@ async function loadRelated(recordId: string): Promise<Related[]> {
   for (const l of links ?? []) counts.set(l.knowledge_item_id as string, (counts.get(l.knowledge_item_id as string) ?? 0) + 1)
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id]) => id)
   if (!top.length) return []
-  const { data: items } = await supabase.from('knowledge_items')
-    .select('id, slug, title, knowledge_type, verification_status').in('id', top)
-  return ((items ?? []) as Array<Related & { id: string; verification_status: string | null }>)
+  const items = await fetchKnowledgeByIds<Related & { id: string; verification_status: string | null }>(top)
+  return items
     .filter(i => i.verification_status !== 'flagged' && i.slug)
     .sort((a, b) => top.indexOf(a.id) - top.indexOf(b.id))
 }

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { HoneypotField, useBotProtection } from '@/components/security/BotProtection'
 
 export type ReportContentType = 'article' | 'record' | 'collection' | 'profile'
 
@@ -35,6 +36,7 @@ export default function ReportButton({ contentType, contentId, contentTitle, cla
   const [sending, setSending] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const botProtection = useBotProtection()
 
   useEffect(() => {
     if (!open) return
@@ -57,12 +59,15 @@ export default function ReportButton({ contentType, contentId, contentTitle, cla
       navigate('/auth/login', { state: { from: location.pathname } })
       return
     }
+    botProtection.restart()
     setOpen(true)
   }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+    const botReason = botProtection.blockedReason()
+    if (botReason) { toast.error(botReason); return }
     if (reason === 'other' && description.trim().length < 10) {
       toast.error('Please describe the problem.')
       return
@@ -108,7 +113,8 @@ export default function ReportButton({ contentType, contentId, contentTitle, cla
             <h2 id="report-title" className="heading-sm text-lg text-gray-900 dark:text-white mb-1">Report a problem</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 line-clamp-2">{contentTitle}</p>
 
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={submit} className="relative space-y-4">
+              <HoneypotField value={botProtection.honeypot} onChange={botProtection.setHoneypot} />
               <fieldset>
                 <legend className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">What’s wrong?</legend>
                 <div className="space-y-1.5">

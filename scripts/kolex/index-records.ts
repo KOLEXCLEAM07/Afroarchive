@@ -119,7 +119,7 @@ async function main() {
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const sourceInfo = item.sources as any;
+    const sourceInfo = item.sources as { name?: string; slug?: string } | null;
     const sourceName = sourceInfo?.name || 'AfroArchive';
     const sourceSlug = sourceInfo?.slug || 'afroarchive';
 
@@ -182,7 +182,7 @@ async function main() {
       }
 
       // Store in pgvector via RPC
-      const { data: chunkId, error: rpcError } = await supabase.rpc('store_chunk_and_embedding_rpc', {
+      const { error: rpcError } = await supabase.rpc('store_chunk_and_embedding_rpc', {
         p_knowledge_item_id: item.id,
         p_chunk_index: chunk.chunkIndex,
         p_chunk_content: chunk.content,

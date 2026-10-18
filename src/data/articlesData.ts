@@ -78,8 +78,8 @@ Where much of modern European philosophy starts from the individual mind, Ubuntu
 ### Ubuntu in public life
 
 After apartheid, Ubuntu was invoked in the epilogue of South Africa's 1993 Interim Constitution and in the work of the Truth and Reconciliation Commission. Philosophers such as Mogobe Ramose and Thaddeus Metz have since developed it into systematic moral theories, and it is discussed today in bioethics, law and political philosophy. Scholars also debate how far a single "Ubuntu philosophy" can be generalised across very different communities.`,
-    cover_image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=1200&q=80',
-    cover_credit: 'Savanna landscape, southern Africa. Photo: Unsplash',
+    cover_image: 'https://commons.wikimedia.org/wiki/Special:FilePath/South%20African%20stand%20-%20Community%20Village.jpg?width=1600',
+    cover_credit: 'Community village, South Africa. Photo: Emna Mizouni, CC BY-SA 4.0, via Wikimedia Commons',
     category: CATEGORIES.philosophy,
     reading_time: 4,
     references_list: [
