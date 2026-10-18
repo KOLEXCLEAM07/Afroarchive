@@ -151,6 +151,10 @@ export async function fetchAtlasData(): Promise<AtlasData> {
         .from('places')
         .select(`id, knowledge_item_id, name, modern_country, historical_region, latitude, longitude, knowledge_items(${KI_FIELDS})`)
         .not('latitude', 'is', null)
+        // Coordinate-only helper rows (capitals / birthplaces created by the
+        // atlas linker) carry no knowledge item; they are shown as the capital
+        // or birthplace of their entity, never as Places in their own right.
+        .not('knowledge_item_id', 'is', null)
         .order('id')
         .range(from, to)
     ),

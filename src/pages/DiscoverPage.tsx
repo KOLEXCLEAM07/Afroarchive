@@ -83,6 +83,7 @@ export default function DiscoverPage() {
   const [queryInput, setQueryInput] = useState(query)
   const [categories, setCategories] = useState<Category[]>([])
   const [articles, setArticles] = useState<Article[]>([])
+  const [articleTotal, setArticleTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
@@ -98,9 +99,20 @@ export default function DiscoverPage() {
     }, { replace: true })
   }
 
+  /** Applies several filter changes at once (e.g. switching content kind). */
+  const applyFilters = (mutate: (params: URLSearchParams) => void) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      mutate(next)
+      return next
+    }, { replace: true })
+  }
+
   useEffect(() => {
+    let cancelled = false
     supabase.from('categories').select('*').order('name')
-      .then(({ data }) => { if (data?.length) setCategories(data as Category[]) })
+      .then(({ data }) => { if (!cancelled && data?.length) setCategories(data as Category[]) })
+    return () => { cancelled = true }
   }, [])
 
   // Keep the input in sync when the URL changes elsewhere (e.g. navbar search).
@@ -121,7 +133,7 @@ export default function DiscoverPage() {
   const activeCategory = categories.find(c => c.slug === category)
   const categoryLabel = categoryOptions.find(c => c.slug === category)?.name || category
 
-  const showRecords = kind !== 'articles' && !category && !country && !language
+  const showRecords = kind !== 'articles' && !country && !language && (kind === 'records' || !category)
 
   const fetchRecordPage = useCallback(
     async (page: number) => {
@@ -164,11 +176,12 @@ export default function DiscoverPage() {
       const q = query.trim()
 
       let dbArticles: Article[] = []
+      let dbArticleTotal = 0
       const categoryUnknown = !!category && categories.length > 0 && !activeCategory
       if (kind !== 'records' && !categoryUnknown) {
         let req = supabase
           .from('articles')
-          .select('*, author:profiles!articles_author_id_fkey(*), category:categories(*)')
+          .select('*, author:profiles!articles_author_id_fkey(*), category:categories(*)', { count: 'exact' })
           .eq('status', 'published')
           .limit(60)
         if (q) req = req.or(ilikeAny(['title', 'excerpt'], q))
@@ -178,9 +191,10 @@ export default function DiscoverPage() {
         req = sort === 'most_liked' ? req.order('likes_count', { ascending: false })
           : sort === 'most_viewed' ? req.order('views_count', { ascending: false })
           : req.order('published_at', { ascending: false })
-        const { data, error } = await req
+        const { data, error, count } = await req
         if (error) setLoadError(true)
         dbArticles = (data as Article[]) ?? []
+        dbArticleTotal = count ?? dbArticles.length
       }
 
       const editorial = kind === 'records' ? [] : FOUNDATIONAL_ARTICLES.filter(a => {
@@ -195,7 +209,8 @@ export default function DiscoverPage() {
       })
 
       if (cancelled) return
-      setArticles(sortArticles([...dbArticles, ...editorial], sort).filter(a => a.title.trim().length >= 5))
+      setArticles(sortArticles([...dbArticles, ...editorial], sort).filter(a => a.title?.trim().length >= 5))
+      setArticleTotal(kind === 'records' ? 0 : dbArticleTotal + editorial.length)
       setLoading(false)
     }
     run().catch(() => { if (!cancelled) { setLoadError(true); setLoading(false) } })
@@ -214,7 +229,7 @@ export default function DiscoverPage() {
       return true
     })
   }, [articles, records])
-  const totalResults = articles.length + recordTotal
+  const totalResults = articleTotal + (showRecords ? recordTotal : 0)
   const hasMoreRecords = showRecords && records.length < recordTotal
   // Wait for both the article and the record queries, so records arriving a beat
   // later no longer flash the "Nothing found" state.
@@ -284,7 +299,12 @@ export default function DiscoverPage() {
                 key={cat.slug || 'all'}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => updateParam('category', cat.slug)}
+                onClick={() => applyFilters(n => {
+                  if (cat.slug) n.set('category', cat.slug)
+                  else n.delete('category')
+                  // A topic implies essays, so leave "Archive records" mode.
+                  if (kind === 'records') n.delete('type')
+                })}
                 className={cn(
                   'whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all border flex-shrink-0',
                   isActive
@@ -307,7 +327,16 @@ export default function DiscoverPage() {
             <div className="flex items-center gap-1" role="group" aria-label="Content type">
               {KINDS.map(k => (
                 <button key={k.value} type="button" aria-pressed={kind === k.value}
-                  onClick={() => updateParam('type', k.value === 'all' ? '' : k.value)}
+                  onClick={() => {
+                    if (k.value === 'records') {
+                      // Records are not classified by topic, so drop the article-only
+                      // filters: otherwise the list comes back empty while the badges
+                      // still claim a topic is applied.
+                      applyFilters(n => { n.set('type', 'records'); n.delete('category'); n.delete('country'); n.delete('lang') })
+                    } else {
+                      updateParam('type', k.value === 'all' ? '' : k.value)
+                    }
+                  }}
                   className={cn('btn btn-sm', kind === k.value ? 'btn-primary' : 'btn-ghost border border-sand-200 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-600 dark:text-gray-300')}>
                   {k.label}
                 </button>

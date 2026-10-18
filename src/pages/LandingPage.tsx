@@ -210,23 +210,27 @@ function HeroSection() {
 
 // ─── Live counts ──────────────────────────────────────────────
 function useArchiveCounts() {
-  const [counts, setCounts] = useState<{ records: number; essays: number; sources: number; contributors: number } | null>(null)
+  const [counts, setCounts] = useState<{ records?: number; essays?: number; sources?: number; contributors?: number } | null>(null)
   useEffect(() => {
+    let cancelled = false
     const head = { count: 'exact' as const, head: true }
     Promise.all([
-      supabase.from('knowledge_items').select('id', head),
+      supabase.from('knowledge_items').select('id', head).or(NOT_FLAGGED),
       supabase.from('articles').select('id', head).eq('status', 'published'),
       supabase.from('sources').select('id', head),
       supabase.from('profiles').select('id', head),
     ]).then(([records, essays, sources, contributors]) => {
-      if ([records, essays, sources, contributors].some(r => r.error)) return
-      setCounts({
-        records: records.count ?? 0,
-        essays: (essays.count ?? 0) + FOUNDATIONAL_ARTICLES.length,
-        sources: sources.count ?? 0,
-        contributors: contributors.count ?? 0,
-      })
+      if (cancelled) return
+      // Show whichever counts came back; only hide the block if every query failed.
+      const next: { records?: number; essays?: number; sources?: number; contributors?: number } = {}
+      if (!records.error) next.records = records.count ?? 0
+      if (!essays.error) next.essays = (essays.count ?? 0) + FOUNDATIONAL_ARTICLES.length
+      if (!sources.error) next.sources = sources.count ?? 0
+      if (!contributors.error) next.contributors = contributors.count ?? 0
+      if (Object.keys(next).length === 0) return
+      setCounts(next)
     })
+    return () => { cancelled = true }
   }, [])
   return counts
 }
@@ -241,7 +245,7 @@ function StatsSection() {
     { icon: <BookOpen className="w-6 h-6" />, value: counts.essays, label: 'Essays & articles' },
     { icon: <Library className="w-6 h-6" />, value: counts.sources, label: 'Open-data sources' },
     { icon: <Users className="w-6 h-6" />, value: counts.contributors, label: 'Members' },
-  ]
+  ].filter(s => s.value !== undefined)
 
   return (
     <section ref={ref} className="py-12 bg-white dark:bg-dark-surface border-y border-sand-200 dark:border-dark-border" aria-label="Archive at a glance">
@@ -252,7 +256,7 @@ function StatsSection() {
               <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mx-auto mb-3 text-primary-600 dark:text-primary-400" aria-hidden="true">
                 {stat.icon}
               </div>
-              <dd className="text-3xl font-bold font-serif text-gray-900 dark:text-white">{formatNumber(stat.value)}</dd>
+              <dd className="text-3xl font-bold font-serif text-gray-900 dark:text-white">{formatNumber(stat.value ?? 0)}</dd>
               <dt className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</dt>
             </motion.div>
           ))}
@@ -269,6 +273,7 @@ function FeaturedArticlesSection() {
   const [articles, setArticles] = useState<Article[]>(FOUNDATIONAL_ARTICLES.slice(0, 4))
 
   useEffect(() => {
+    let cancelled = false
     supabase
       .from('articles')
       .select('*, author:profiles!articles_author_id_fkey(*), category:categories(*)')
@@ -276,10 +281,12 @@ function FeaturedArticlesSection() {
       .order('published_at', { ascending: false })
       .limit(4)
       .then(({ data }) => {
+        if (cancelled) return
         // Only feature community work that has a proper excerpt; fill the rest with editorial essays.
-        const community = ((data as Article[]) ?? []).filter(a => a.excerpt && a.title.trim().length >= 5)
+        const community = ((data as Article[]) ?? []).filter(a => a.excerpt && (a.title?.trim().length ?? 0) >= 5)
         setArticles([...community, ...FOUNDATIONAL_ARTICLES].slice(0, 4))
       })
+    return () => { cancelled = true }
   }, [])
 
   return (
@@ -293,9 +300,11 @@ function FeaturedArticlesSection() {
           cta={{ label: 'All essays', to: '/discover?type=articles' }}
         />
         <motion.div variants={stagger} initial="hidden" animate={inView ? 'visible' : 'hidden'} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-          <motion.div variants={fadeUp} className="md:col-span-2 lg:col-span-2">
-            <ArticleCard article={articles[0]} variant="featured" className="h-full min-h-[380px]" />
-          </motion.div>
+          {articles[0] && (
+            <motion.div variants={fadeUp} className="md:col-span-2 lg:col-span-2">
+              <ArticleCard article={articles[0]} variant="featured" className="h-full min-h-[380px]" />
+            </motion.div>
+          )}
           {articles.slice(1, 4).map(a => (
             <motion.div key={a.id} variants={fadeUp}>
               <ArticleCard article={a} variant="default" className="h-full" />
@@ -313,6 +322,7 @@ function RecentRecordsSection() {
   const [records, setRecords] = useState<Article[]>([])
 
   useEffect(() => {
+    let cancelled = false
     supabase
       .from('knowledge_items')
       .select(KNOWLEDGE_SELECT)
@@ -320,9 +330,11 @@ function RecentRecordsSection() {
       .order('created_at', { ascending: false })
       .limit(12)
       .then(({ data }) => {
+        if (cancelled) return
         const mapped = ((data ?? []) as unknown as KnowledgeRecord[]).map(knowledgeItemToArticle).filter(r => r.cover_image)
         setRecords(mapped.slice(0, 4))
       })
+    return () => { cancelled = true }
   }, [])
 
   if (records.length === 0) return null
@@ -585,8 +597,10 @@ function SourcesSection() {
   const [sources, setSources] = useState<SourceRow[]>([])
 
   useEffect(() => {
+    let cancelled = false
     supabase.from('sources').select('name, slug, base_url, default_license').order('name')
-      .then(({ data }) => setSources(((data ?? []) as SourceRow[]).filter(s => s.slug !== 'afroarchive-seed')))
+      .then(({ data }) => { if (!cancelled) setSources(((data ?? []) as SourceRow[]).filter(s => s.slug !== 'afroarchive-seed')) })
+    return () => { cancelled = true }
   }, [])
 
   return (

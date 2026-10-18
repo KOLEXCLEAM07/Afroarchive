@@ -160,7 +160,7 @@ export default function RecordFacts({ recordId, recordSlug, knowledgeType, part 
               </div>
             ))}
           </dl>
-          {onMap && (
+          {onMap && recordSlug && (
             <Link to={`/atlas?focus=${encodeURIComponent(recordSlug)}`} className="mt-3 inline-flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-medium hover:underline">
               <MapPin className="w-3.5 h-3.5" aria-hidden="true" /> See it on the atlas
             </Link>

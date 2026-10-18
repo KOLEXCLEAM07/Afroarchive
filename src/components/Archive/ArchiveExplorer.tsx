@@ -195,6 +195,7 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
     items: liveArtifacts,
     total: liveTotal,
     loadingMore,
+    hasMore: hasMoreLive,
     loadMore,
   } = usePagedQuery<ArtifactItem>({ key: liveKey, fetchPage: fetchLivePage, dedupeKey: dedupeArtifact })
 
@@ -363,10 +364,10 @@ export const ArchiveExplorer: React.FC<ArchiveExplorerProps> = ({
                 />
               ))}
             </div>
-            {liveArtifacts.length < liveTotal && (
+            {hasMoreLive && (
               <div className="text-center">
                 <button type="button" onClick={loadMore} disabled={loadingMore} className="btn btn-outline btn-md">
-                  {loadingMore ? 'Loading…' : `Show more (${(liveTotal - liveArtifacts.length).toLocaleString()} remaining)`}
+                  {loadingMore ? 'Loading…' : `Show more (${Math.max(0, liveTotal - liveArtifacts.length).toLocaleString()} remaining)`}
                 </button>
               </div>
             )}

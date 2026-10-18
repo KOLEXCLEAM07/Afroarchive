@@ -138,6 +138,69 @@ test('Art Institute: skips objects that are not public domain or have no image',
   assert.equal(await new ArticImporter().normalize({ ...ARTIC_ARTWORK, title: '   ' }), null)
 })
 
+interface ArticSearchBody {
+  query: { bool: { filter: Array<Record<string, unknown>> } }
+  sort: unknown
+  limit: number
+  page: number
+  fields: string
+}
+
+/** Replaces global fetch with a canned search response and returns a restore fn. */
+function stubArticSearch(rows: Array<{ id: number }>, total: number, captured: ArticSearchBody[]) {
+  const original = globalThis.fetch
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    captured.push(JSON.parse(String(init?.body)) as ArticSearchBody)
+    const data = rows.map((r) => ({ ...r, is_public_domain: true, image_id: 'img' }))
+    return new Response(JSON.stringify({ pagination: { total }, data }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }) as typeof fetch
+  return () => {
+    globalThis.fetch = original
+  }
+}
+
+test("Art Institute: pages by id range, never past the API's 1000-result window", async () => {
+  const captured: ArticSearchBody[] = []
+  const rows = Array.from({ length: 100 }, (_, i) => ({ id: 5000 + i }))
+  const restore = stubArticSearch(rows, 1102, captured)
+  try {
+    const first = await new ArticImporter().fetchBatch(undefined, 100)
+    assert.equal(first.hasMore, true)
+    assert.equal(first.nextCursor, 5099)
+    // The opening request walks from the start: no range filter, page 1.
+    assert.equal(captured[0].page, 1)
+    assert.equal(captured[0].query.bool.filter.some((f) => 'range' in f), false)
+
+    // The next request must continue after the last id, still on page 1 so the
+    // Elasticsearch result window (from+size) can never exceed 1000.
+    const second = await new ArticImporter().fetchBatch(first.nextCursor as number, 100)
+    assert.equal(second.hasMore, true)
+    assert.equal(captured[1].page, 1)
+    assert.deepEqual(
+      captured[1].query.bool.filter.find((f) => 'range' in f),
+      { range: { id: { gt: 5099 } } },
+    )
+  } finally {
+    restore()
+  }
+})
+
+test('Art Institute: a short page ends paging and advances the checkpoint', async () => {
+  const captured: ArticSearchBody[] = []
+  const restore = stubArticSearch([{ id: 12 }, { id: 13 }], 1102, captured)
+  try {
+    const result = await new ArticImporter().fetchBatch(11, 100)
+    assert.equal(result.records.length, 2)
+    assert.equal(result.hasMore, false)
+    assert.equal(result.nextCursor, 13)
+  } finally {
+    restore()
+  }
+})
+
 // ─── The Metropolitan Museum of Art ───────────────────────────
 
 const MET_OBJECT: MetObject = {

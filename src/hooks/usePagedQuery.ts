@@ -102,6 +102,10 @@ export function usePagedQuery<T>({ key, fetchPage, dedupeKey }: PagedQueryOption
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set once a page returns nothing new — either the server is out of rows or
+  // every row was a duplicate the caller's `dedupeKey` dropped. Without this a
+  // deduplicated list would offer "Show more" forever, each press adding nothing.
+  const [exhausted, setExhausted] = useState(false)
 
   // Latest callbacks, so the loaders below can stay referentially stable and
   // only re-run when `key` actually changes.
@@ -118,6 +122,11 @@ export function usePagedQuery<T>({ key, fetchPage, dedupeKey }: PagedQueryOption
 
   const loadFirst = useCallback((targetKey: string, force: boolean) => {
     const run = ++runRef.current
+    // A new query supersedes any in-flight "load more"; clear its flag here, or
+    // the button would stay stuck on "Loading…" because the stale finally-guard
+    // (run !== runRef.current) skips the reset.
+    setLoadingMore(false)
+    setExhausted(false)
     const cached = force ? null : readCache<T>(targetKey)
     if (cached) {
       pagesRef.current = cached.pages
@@ -156,6 +165,8 @@ export function usePagedQuery<T>({ key, fetchPage, dedupeKey }: PagedQueryOption
       setItems([])
       setTotal(0)
       setLoading(false)
+      setLoadingMore(false)
+      setExhausted(false)
       setError(null)
       return
     }
@@ -172,10 +183,13 @@ export function usePagedQuery<T>({ key, fetchPage, dedupeKey }: PagedQueryOption
       .then((res) => {
         if (run !== runRef.current) return
         pagesRef.current = page + 1
+        const before = itemsRef.current.length
         const next = appendUnique(itemsRef.current, res.items, dedupeRef.current)
         itemsRef.current = next
         setItems(next)
         setTotal(res.total)
+        // Nothing new to show, so stop offering "Show more".
+        if (next.length === before) setExhausted(true)
         writeCache(key, { items: next, total: res.total, pages: page + 1, at: Date.now() })
       })
       .catch((err) => {
@@ -196,7 +210,7 @@ export function usePagedQuery<T>({ key, fetchPage, dedupeKey }: PagedQueryOption
     loading,
     loadingMore,
     error,
-    hasMore: items.length < total,
+    hasMore: !exhausted && items.length < total,
     loadMore,
     refresh,
   }

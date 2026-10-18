@@ -12,8 +12,10 @@ export default function AboutPage() {
   const [sources, setSources] = useState<SourceRow[]>([])
 
   useEffect(() => {
+    let cancelled = false
     supabase.from('sources').select('name, slug, base_url, default_license').order('name')
-      .then(({ data }) => setSources(((data ?? []) as SourceRow[]).filter(s => s.slug !== 'afroarchive-seed')))
+      .then(({ data }) => { if (!cancelled) setSources(((data ?? []) as SourceRow[]).filter(s => s.slug !== 'afroarchive-seed')) })
+    return () => { cancelled = true }
   }, [])
 
   return (

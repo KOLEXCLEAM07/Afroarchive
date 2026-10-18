@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Crown, Landmark, Loader2, MapPin, Search, User, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { formatYear, yearSpan } from '@/lib/knowledge'
+import { fetchAllRows } from '@/lib/knowledgeQuery'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +19,11 @@ interface Entry {
 }
 
 interface LinkedItem { slug: string | null; summary: string | null; verification_status: string | null }
+
+interface PeopleRow { id: string; name: string; birth_year: number | null; death_year: number | null; is_approximate_dates: boolean | null; era: string | null; occupations: string[] | null; item: LinkedItem | null }
+interface PlaceRow { id: string; name: string; modern_country: string | null; historical_region: string | null; item: LinkedItem | null }
+interface StateRow { id: string; name: string; founding_year: number | null; dissolution_year: number | null; modern_countries: string[] | null; item: LinkedItem | null }
+interface CultureRow { id: string; name: string; historical_period: string | null; geographic_distribution: string[] | null; item: LinkedItem | null }
 
 const KINDS: Array<{ key: Kind; label: string; icon: typeof User; empty: string }> = [
   { key: 'people', label: 'People', icon: User, empty: 'No people have been added yet.' },
@@ -36,9 +42,10 @@ async function load(kind: Kind): Promise<Entry[]> {
   const item = 'item:knowledge_items(slug, summary, verification_status)'
   switch (kind) {
     case 'people': {
-      const { data } = await supabase.from('people').select(`id, name, birth_year, death_year, is_approximate_dates, era, occupations, ${item}`)
-      return (data ?? []).flatMap(row => {
-        const r = row as unknown as { id: string; name: string; birth_year: number | null; death_year: number | null; is_approximate_dates: boolean | null; era: string | null; occupations: string[] | null; item: LinkedItem | null }
+      const { data, error } = await fetchAllRows<PeopleRow>((from, to) =>
+        supabase.from('people').select(`id, name, birth_year, death_year, is_approximate_dates, era, occupations, ${item}`).order('name').order('id').range(from, to))
+      if (error) throw new Error(error.message)
+      return data.flatMap(r => {
         if (!usable(r.item)) return []
         const approx = !!r.is_approximate_dates
         return [{ key: r.id, name: r.name, slug: r.item.slug, sortYear: r.birth_year ?? r.death_year,
@@ -47,18 +54,20 @@ async function load(kind: Kind): Promise<Entry[]> {
       })
     }
     case 'places': {
-      const { data } = await supabase.from('places').select(`id, name, modern_country, historical_region, ${item}`)
-      return (data ?? []).flatMap(row => {
-        const r = row as unknown as { id: string; name: string; modern_country: string | null; historical_region: string | null; item: LinkedItem | null }
+      const { data, error } = await fetchAllRows<PlaceRow>((from, to) =>
+        supabase.from('places').select(`id, name, modern_country, historical_region, ${item}`).order('name').order('id').range(from, to))
+      if (error) throw new Error(error.message)
+      return data.flatMap(r => {
         if (!usable(r.item)) return []
         return [{ key: r.id, name: r.name, slug: r.item.slug, sortYear: null,
           meta: [r.modern_country, r.historical_region].filter(Boolean).join(' · ') || null, detail: r.item.summary }]
       })
     }
     case 'states': {
-      const { data } = await supabase.from('kingdoms_or_states').select(`id, name, founding_year, dissolution_year, modern_countries, ${item}`)
-      return (data ?? []).flatMap(row => {
-        const r = row as unknown as { id: string; name: string; founding_year: number | null; dissolution_year: number | null; modern_countries: string[] | null; item: LinkedItem | null }
+      const { data, error } = await fetchAllRows<StateRow>((from, to) =>
+        supabase.from('kingdoms_or_states').select(`id, name, founding_year, dissolution_year, modern_countries, ${item}`).order('name').order('id').range(from, to))
+      if (error) throw new Error(error.message)
+      return data.flatMap(r => {
         if (!usable(r.item)) return []
         return [{ key: r.id, name: r.name, slug: r.item.slug, sortYear: r.founding_year,
           meta: yearSpan(formatYear(r.founding_year), formatYear(r.dissolution_year)),
@@ -66,9 +75,10 @@ async function load(kind: Kind): Promise<Entry[]> {
       })
     }
     case 'peoples': {
-      const { data } = await supabase.from('cultures').select(`id, name, historical_period, geographic_distribution, ${item}`)
-      return (data ?? []).flatMap(row => {
-        const r = row as unknown as { id: string; name: string; historical_period: string | null; geographic_distribution: string[] | null; item: LinkedItem | null }
+      const { data, error } = await fetchAllRows<CultureRow>((from, to) =>
+        supabase.from('cultures').select(`id, name, historical_period, geographic_distribution, ${item}`).order('name').order('id').range(from, to))
+      if (error) throw new Error(error.message)
+      return data.flatMap(r => {
         if (!usable(r.item)) return []
         return [{ key: r.id, name: r.name, slug: r.item.slug, sortYear: null,
           meta: r.geographic_distribution?.join(', ') || r.historical_period, detail: r.item.summary }]
@@ -83,12 +93,16 @@ export default function ExplorePage() {
   const [entries, setEntries] = useState<Entry[] | null>(null)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<'name' | 'date'>('name')
+  const [error, setError] = useState(false)
   useDocumentTitle('People, places & states')
 
   useEffect(() => {
     let cancelled = false
     setEntries(null)
-    load(kind).then(e => { if (!cancelled) setEntries(e) }).catch(() => { if (!cancelled) setEntries([]) })
+    setError(false)
+    load(kind)
+      .then(e => { if (!cancelled) setEntries(e) })
+      .catch(() => { if (!cancelled) { setEntries([]); setError(true) } })
     return () => { cancelled = true }
   }, [kind])
 
@@ -139,6 +153,11 @@ export default function ExplorePage() {
 
         {entries === null ? (
           <div className="flex justify-center py-16" role="status"><Loader2 className="w-7 h-7 animate-spin text-primary-500" /></div>
+        ) : error ? (
+          <div className="card p-10 text-center max-w-lg mx-auto">
+            <Landmark className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Could not load these entries. Please try again.</p>
+          </div>
         ) : shown.length === 0 ? (
           <div className="card p-10 text-center max-w-lg mx-auto">
             <Landmark className="w-8 h-8 text-gray-400 mx-auto mb-3" />

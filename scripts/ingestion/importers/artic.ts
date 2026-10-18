@@ -63,20 +63,28 @@ export class ArticImporter extends BaseImporter<ArticArtwork> {
     _options?: ConnectorOptions
   ): Promise<BatchFetchResult<ArticArtwork>> {
     void _options;
-    // Cursor is the record offset; the API pages in fixed blocks of 100.
-    const offset = typeof cursor === 'number' ? cursor : parseInt(String(cursor ?? 0), 10) || 0;
+    // Cursor is the id of the last artwork seen. The API's Elasticsearch backend
+    // rejects any result window past from+size=1000 ("Invalid number of results"),
+    // so page/offset paging cannot reach the tail of the collection. An `id`
+    // range filter walks the set in sorted order and always stays in window.
+    const afterId = typeof cursor === 'number' ? cursor : parseInt(String(cursor ?? 0), 10) || 0;
     const pageSize = 100;
-    const page = Math.floor(offset / pageSize) + 1;
+
+    const filter: unknown[] = [
+      { term: { is_public_domain: true } },
+      { term: { department_id: 'PC-1' } },
+    ];
+    if (afterId > 0) filter.push({ range: { id: { gt: afterId } } });
 
     const body = {
       query: {
         bool: {
-          filter: [{ term: { is_public_domain: true } }, { term: { department_id: 'PC-1' } }],
+          filter,
         },
       },
       sort: [{ id: 'asc' }],
       limit: pageSize,
-      page,
+      page: 1,
       fields: FIELDS,
     };
 
@@ -107,11 +115,13 @@ export class ArticImporter extends BaseImporter<ArticArtwork> {
     }
 
     const pageRecords = json.data || [];
-    const within = offset - (page - 1) * pageSize;
-    const records = pageRecords.slice(within, within + limit);
-    const next = offset + records.length;
-    const hasMore = records.length > 0 && next < (json.pagination?.total ?? 0);
-    return { records, nextCursor: hasMore ? next : null, hasMore };
+    const records = pageRecords.slice(0, limit);
+    const lastId = records.length ? records[records.length - 1].id : null;
+    // A full page means the query window filled up, so more may exist; a short
+    // page is the end. The cursor always advances to the last id returned so a
+    // finished run leaves a checkpoint at the true end of the collection.
+    const hasMore = pageRecords.length >= pageSize;
+    return { records, nextCursor: lastId, hasMore };
   }
 
   async normalize(art: ArticArtwork): Promise<NormalizedItem | null> {

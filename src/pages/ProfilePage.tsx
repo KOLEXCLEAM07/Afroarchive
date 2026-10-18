@@ -88,7 +88,7 @@ export default function ProfilePage() {
         if (routeUsername) {
           const { data, error } = await supabase
             .from('profiles').select('*')
-            .eq('username', routeUsername.toLowerCase()).single()
+            .eq('username', routeUsername.toLowerCase()).maybeSingle()
           if (error || !data) {
             if (authProfile && authProfile.username === routeUsername) {
               setProfile(authProfile); setIsOwnProfile(true)
@@ -100,7 +100,7 @@ export default function ProfilePage() {
         } else if (user) {
           if (authProfile) { setProfile(authProfile); setIsOwnProfile(true) }
           else {
-            const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+            const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
             if (data) { setProfile(data as Profile); setIsOwnProfile(true) }
           }
         } else { navigate('/auth/login', { replace: true, state: { from: location.pathname } }); return }

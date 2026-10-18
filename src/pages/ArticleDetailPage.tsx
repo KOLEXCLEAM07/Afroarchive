@@ -401,7 +401,7 @@ export default function ArticleDetailPage() {
             </aside>
           )}
 
-          {record && <RecordFacts part="facts" recordId={record.id} recordSlug={visible.slug} knowledgeType={record.knowledge_type} />}
+          {record && <RecordFacts part="facts" recordId={record.id} recordSlug={record.slug ?? ''} knowledgeType={record.knowledge_type} />}
 
           <div
             lang={visible.language || undefined}
@@ -428,7 +428,7 @@ export default function ArticleDetailPage() {
             </section>
           )}
 
-          {record && <RecordFacts part="related" recordId={record.id} recordSlug={visible.slug} knowledgeType={record.knowledge_type} />}
+          {record && <RecordFacts part="related" recordId={record.id} recordSlug={record.slug ?? ''} knowledgeType={record.knowledge_type} />}
 
           {visible.status === 'published' && (
             <CiteThis

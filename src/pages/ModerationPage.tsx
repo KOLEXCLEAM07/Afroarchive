@@ -102,8 +102,11 @@ function Spinner() {
   return <div className="flex justify-center py-16" role="status"><Loader2 className="w-7 h-7 animate-spin text-primary-500" /></div>
 }
 
-async function hideRecordBySlug(slug: string, note?: string) {
-  const { data } = await supabase.from('knowledge_items').select('id').eq('slug', slug).maybeSingle()
+async function hideRecordBySlug(idOrSlug: string, note?: string) {
+  // Reports store a record's slug, but a slugless record falls back to its id
+  // (see ArticleDetailPage's ReportButton), so accept either.
+  const base = supabase.from('knowledge_items').select('id')
+  const { data } = await (isUuid(idOrSlug) ? base.eq('id', idOrSlug) : base.eq('slug', idOrSlug)).maybeSingle()
   if (!data) throw new Error('Record not found')
   const { error } = await supabase.rpc('set_record_status', { p_record_id: data.id, p_status: 'flagged', p_note: note || null })
   if (error) throw error

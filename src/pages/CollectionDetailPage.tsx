@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Globe, Layers, Loader2, Lock, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Globe, Layers, Loader2, Lock, Trash2, X, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -17,8 +17,9 @@ export default function CollectionDetailPage() {
 
   const [collection, setCollection] = useState<Collection | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
-  const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
   const [busy, setBusy] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useDocumentTitle(collection?.title ?? null)
 
@@ -27,21 +28,23 @@ export default function CollectionDetailPage() {
     let cancelled = false
     async function load() {
       setState('loading')
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('collections')
         .select('*, owner:profiles!collections_owner_id_fkey(*)')
         .eq('slug', slug)
         .maybeSingle()
       if (cancelled) return
+      if (error) { setState('error'); return }
       const col = data as Collection | null
       if (!col || (!col.is_public && col.owner_id !== user?.id)) { setState('missing'); return }
 
-      const { data: items } = await supabase
+      const { data: items, error: itemsError } = await supabase
         .from('collection_items')
         .select('added_at, article:articles(*, author:profiles!articles_author_id_fkey(*), category:categories(*))')
         .eq('collection_id', col.id)
         .order('added_at', { ascending: false })
       if (cancelled) return
+      if (itemsError) { setState('error'); return }
       const list = ((items ?? []) as unknown as Array<{ article: Article | null }>)
         .map(i => i.article)
         .filter((a): a is Article => !!a && (a.status === 'published' || a.author_id === user?.id))
@@ -51,10 +54,26 @@ export default function CollectionDetailPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [slug, user, authLoading])
+  }, [slug, user, authLoading, reloadKey])
 
   // Old theme links (/collections/history) fall through to the matching topic.
   if (state === 'missing') return <Navigate to={`/discover?category=${encodeURIComponent(slug)}`} replace />
+
+  if (state === 'error') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="card p-10 text-center max-w-md">
+          <AlertCircle className="w-9 h-9 text-amber-500 mx-auto mb-3" />
+          <h1 className="heading-sm text-gray-900 dark:text-white mb-2">Could not load this collection</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">There was a problem reaching the archive. This is not a “not found” — the collection may still exist.</p>
+          <div className="flex gap-2 justify-center">
+            <button type="button" onClick={() => setReloadKey(k => k + 1)} className="btn btn-primary btn-md">Try again</button>
+            <Link to="/collections" className="btn btn-outline btn-md">All collections</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (state === 'loading' || !collection) {
     return (
