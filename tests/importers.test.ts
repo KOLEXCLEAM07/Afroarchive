@@ -124,9 +124,15 @@ test('Art Institute: a public-domain object becomes a CC0 artifact with IIIF ima
   assert.ok(item.countryCodes.includes('NG'), 'Nigeria should be detected as an African country')
   assert.match(item.slug, /-artic-146967$/)
   assert.equal(item.sourceUrl, 'https://www.artic.edu/artworks/146967')
+  // Confined (!w,h) sizes never upscale; a plain `843,` is 403'd for images
+  // narrower than 843px ("scales in excess of 100% are not allowed").
   assert.equal(
     item.entityData?.media?.[0].fileUrl,
-    'https://www.artic.edu/iiif/2/a1b2c3d4-0000-0000-0000-000000000000/full/843,/0/default.jpg',
+    'https://www.artic.edu/iiif/2/a1b2c3d4-0000-0000-0000-000000000000/full/!843,843/0/default.jpg',
+  )
+  assert.equal(
+    item.entityData?.media?.[0].thumbnailUrl,
+    'https://www.artic.edu/iiif/2/a1b2c3d4-0000-0000-0000-000000000000/full/!400,400/0/default.jpg',
   )
   // The leading "The Art Institute of Chicago," is stripped so the credit is not doubled.
   assert.match(item.rights.attribution, /^Art Institute of Chicago, Gift of an anonymous donor$/)

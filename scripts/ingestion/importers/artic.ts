@@ -41,6 +41,12 @@ const FIELDS = [
 
 const CC0_URL = 'https://creativecommons.org/publicdomain/zero/1.0/';
 const IIIF = 'https://www.artic.edu/iiif/2';
+// Images are stored as hotlinks here, but artic.edu serves them behind Cloudflare
+// and refuses requests whose referer is not artic.edu, so they must be copied to
+// our own storage after import:
+//   npx tsx scripts/cleanup/rehost-artic-images.ts --apply
+// Sizes use the IIIF "confined" form (!w,h) so narrow images are never upscaled;
+// a plain `843,` is rejected with "scales in excess of 100%".
 
 export class ArticImporter extends BaseImporter<ArticArtwork> {
   readonly name = 'Art Institute of Chicago Importer';
@@ -202,8 +208,8 @@ export class ArticImporter extends BaseImporter<ArticArtwork> {
             description: cleanText(art.thumbnail?.alt_text) || undefined,
             mediaType: 'image',
             mimeType: 'image/jpeg',
-            fileUrl: `${IIIF}/${art.image_id}/full/843,/0/default.jpg`,
-            thumbnailUrl: `${IIIF}/${art.image_id}/full/400,/0/default.jpg`,
+            fileUrl: `${IIIF}/${art.image_id}/full/!843,843/0/default.jpg`,
+            thumbnailUrl: `${IIIF}/${art.image_id}/full/!400,400/0/default.jpg`,
             sourceMediaId: `artic-${art.image_id}`,
             rights,
             width: art.thumbnail?.width,
