@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
-  Search, Menu, X, Sun, Moon, BookOpen,
+  Search, Menu, X, Sun, Moon,
   User, LogOut, Settings, ChevronDown, Feather, Landmark, ShieldCheck, LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -108,8 +108,8 @@ export default function Navbar() {
               className="flex items-center gap-2.5 group flex-shrink-0"
               aria-label="AfroArchive Home"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-glow group-hover:shadow-accent-glow transition-shadow duration-300">
-                <BookOpen className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-primary-950/70 flex items-center justify-center shadow-glow group-hover:shadow-accent-glow transition-shadow duration-300">
+                <img src="/afroarchive-mark.png" alt="" className="h-9 w-9 object-contain scale-110" />
               </div>
               <span className={cn(
                 'font-serif font-bold text-xl tracking-tight transition-colors duration-300',

@@ -21,7 +21,10 @@ export default function AboutPage() {
   return (
     <div className="bg-sand-50 dark:bg-dark-bg py-14">
       <article className="container-app max-w-3xl text-gray-700 dark:text-gray-300 leading-relaxed">
-        <h1 className="heading-xl text-3xl sm:text-4xl text-gray-900 dark:text-white mb-6">About AfroArchive</h1>
+        <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="heading-xl text-3xl sm:text-4xl text-gray-900 dark:text-white">About AfroArchive</h1>
+          <img src="/afroarchive-logo.png" alt="AfroArchive — Preserve. Discover. Empower." className="w-36 self-start sm:self-auto" />
+        </header>
         <p className="text-lg mb-4">
           AfroArchive is an open, non-commercial archive of African knowledge. It brings together three kinds of material:
         </p>

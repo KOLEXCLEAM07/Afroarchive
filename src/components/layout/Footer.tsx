@@ -73,13 +73,12 @@ export const Footer: React.FC = () => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-16 md:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
           <div className="lg:col-span-2 sm:col-span-2">
-            <Link to="/" className="group inline-flex items-center gap-2.5 mb-6 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400" aria-label="AfroArchive home">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" aria-hidden="true" />
-              </div>
-              <span className="font-serif font-bold text-xl tracking-tight text-white">
-                Afro<span className="text-gradient-gold">Archive</span>
-              </span>
+            <Link to="/" className="group mb-6 inline-block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400" aria-label="AfroArchive home">
+              <img
+                src="/afroarchive-logo.png"
+                alt="AfroArchive — Preserve. Discover. Empower."
+                className="w-44 max-w-full transition-transform duration-200 group-hover:scale-[1.02]"
+              />
             </Link>
 
             <p className="font-sans text-sm text-ivory-400 leading-relaxed mb-6 max-w-sm">

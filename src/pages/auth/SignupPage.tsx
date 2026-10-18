@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BookOpen, Mail, Lock, Eye, EyeOff, User, AtSign, AlertCircle, Globe, CheckCircle2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, User, AtSign, AlertCircle, Globe, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { friendlyAuthError } from '@/lib/authErrors'
@@ -88,11 +88,8 @@ export default function SignupPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-900 via-primary-900 to-accent-900">
         <div className="absolute inset-0" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <Link to="/" className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
-            <span className="font-serif font-bold text-2xl">AfroArchive</span>
+          <Link to="/" className="mb-8 inline-block">
+            <img src="/afroarchive-logo.png" alt="AfroArchive — Preserve. Discover. Empower." className="w-52 drop-shadow-xl" />
           </Link>
           <h2 className="font-serif text-3xl font-bold mb-4 leading-tight">
             Help preserve and share Africa's knowledge
